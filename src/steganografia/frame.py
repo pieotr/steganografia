@@ -52,7 +52,10 @@ def parse_header(header: bytes, *, capacity_bytes: int) -> FrameHeader:
         raise FrameError("Pojemność obrazu nie mieści nagłówka (13 bajtów)")
     limit = min(MAX_PAYLOAD_SIZE, capacity_bytes - HEADER_SIZE)
     if length > limit:
-        raise FrameError("LENGTH przekracza pojemność obrazu")
+        raise FrameError(
+            f"LENGTH ({length} B) przekracza pojemność obrazu "
+            f"(maksymalnie {limit} B payloadu)"
+        )
 
     return FrameHeader(length=length, crc32=checksum)
 

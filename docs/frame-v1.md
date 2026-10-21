@@ -1,6 +1,6 @@
 # Plan formatu ramki — Sprint 1, zadanie 1 (LSB)
 
-**Status: dokumentacja i parser ramki. Funkcja pakująca i testy pozostają do wykonania.**
+**Status: dokumentacja, parser ramki i osadzanie/odczyt LSB. Pakowanie ramki i testy pozostają do wykonania.**
 
 **Właściciel:** S1 | **Sprawdza:** S5 | **Etap:** Sprint 1, tygodnie 2–3  
 **Priorytet:** MUST | **Rozmiar:** M | **Zależność:** S0-08
@@ -18,7 +18,8 @@ Tekst ma być kodowany w UTF-8, bez dodawania BOM i terminatora NUL.
 Należy dopuścić pustą wiadomość. Nie przewiduje się kompresji, szyfrowania
 ani normalizacji Unicode w ramach tego zadania.
 
-Osadzanie ramki w pikselach obrazu ma stanowić osobny krok.
+Osadzanie ramki w pikselach obrazu jest osobnym krokiem i jest zaimplementowane
+w `src/steganografia/lsb.py`.
 
 ## Planowana budowa ramki
 
@@ -47,11 +48,14 @@ Bajty ramki należy przekazywać od początku nagłówka do końca payloadu.
 W każdym bajcie należy przyjąć kolejność **MSB-first**: od bitu b7 do b0.
 Przykładowo bajt `53` ma być przekazywany jako `0 1 0 1 0 0 1 1`.
 
-Każdy kolejny bit ramki ma zajmować najmłodszy bit kolejnej wybranej
-próbki obrazu. Dla podstawowego wariantu RGB proponuje się kolejność:
-wiersze od góry, piksele od lewej, kanały R, G, B, z pominięciem alfa.
-Na jeden kanał ma przypadać jeden bit wiadomości. Zapis i odczyt mają
-stosować identyczną kolejność.
+Każdy kolejny bit ramki zajmuje najmłodszy bit kolejnej wybranej próbki obrazu.
+Implementacja przyjmuje tablicę NumPy `uint8` o układzie
+`(wysokość, szerokość, 3)` (RGB) lub `(wysokość, szerokość, 4)` (RGBA).
+Próbki są wybierane w kolejności C: wiersze od góry, piksele od lewej,
+a w każdym pikselu kanały R, G, B. Kanał alfa jest pomijany i niezmieniany.
+Każdy kanał RGB przenosi jeden bit. Bajty ramki są zapisywane MSB-first,
+zgodnie z sekcją „Kolejność bajtów i bitów”. Zapis i odczyt stosują tę samą
+kolejność; obraz wejściowy nie jest modyfikowany.
 
 ## Limit długości zależny od pojemności
 
@@ -60,7 +64,7 @@ Dla `N` dostępnych próbek obrazu pojemność należy obliczać jako
 W wariancie RGB z jednym LSB na kanał należy przyjąć
 `N = szerokość × wysokość × 3`.
 
-Przyszła implementacja ma stosować następujące ograniczenia:
+Implementacja stosuje następujące ograniczenia:
 
 - Dla `C < 13` należy odrzucić zapis, ponieważ nie zmieści się nagłówek.
 - Dla `C >= 13` długość payloadu ma spełniać
@@ -69,9 +73,16 @@ Przyszła implementacja ma stosować następujące ograniczenia:
 - Pusta wiadomość ma wymagać 13 bajtów, czyli 104 próbek obrazu.
 - Wiadomość `ą` ma wymagać 15 bajtów, czyli 120 próbek obrazu.
 
-Pojemność przekazywana do parsera ma pochodzić z parametrów obrazu
-i wybranego sposobu osadzania. Nie wolno ustalać jej na podstawie
-niezaufanego pola LENGTH.
+`capacity_bytes(image)` zwraca pojemność całej ramki, natomiast
+`payload_capacity_bytes(image)` zwraca pojemność payloadu po odjęciu
+13-bajtowego nagłówka. Pojemność parsera pochodzi z rozmiaru obrazu, nigdy
+z niezaufanego pola LENGTH.
+
+Moduł udostępnia też niskopoziomowe `embed_bits(image, bits)` i
+`extract_bits(image, bit_count)`. Przyjmują i zwracają sekwencję bitów wprost,
+co pozwala przenosić inne strumienie; ich pojemność to liczba próbek RGB.
+Przy przenoszeniu ramki należy użyć `embed_frame`/`extract_frame`, które
+walidują 13-bajtowy nagłówek i uwzględniają go w pojemności payloadu.
 
 ## Planowana kontrola CRC32
 
@@ -141,9 +152,13 @@ pojemność całej ramki w bajtach i musi być liczbą całkowitą inną niż `b
 Błędy ramki i pojemności zgłaszają `FrameError` (podklasa `ValueError`),
 a niewłaściwe typy argumentów — `TypeError`.
 
-Przyszły czytnik obrazu powinien najpierw pobrać 13 bajtów i wywołać
-`parse_header`. Dopiero po pomyślnej walidacji może pobrać `length` bajtów
-payloadu. Samo `unpack` przyjmuje bufor, który jest już w pamięci.
+`extract_frame` odczytuje najpierw stałe 13 bajtów nagłówka i wywołuje
+`parse_header` z pojemnością obliczoną z obrazu. Dopiero po sprawdzeniu
+MAGIC, wersji i LENGTH odczytuje pozostałe bajty ramki; na koniec `unpack`
+weryfikuje CRC32, dokładny rozmiar i UTF-8. `embed_frame` odrzuca niepełną,
+nadmiarową lub niepoprawną ramkę. Zapis tworzy kopię obrazu i zmienia
+wyłącznie LSB wykorzystanych próbek RGB; wyższe bity, alfa i niewykorzystane
+próbki pozostają bez zmian.
 
 Testów parsera jeszcze nie przygotowano ani nie uruchomiono.
 
