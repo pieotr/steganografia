@@ -1,14 +1,14 @@
 # Plan formatu ramki — Sprint 1, zadanie 1 (LSB)
 
-**Status: dokumentacja projektowa. Implementacja i testy pozostają do wykonania.**
+**Status: dokumentacja i parser ramki. Funkcja pakująca i testy pozostają do wykonania.**
 
 **Właściciel:** S1 | **Sprawdza:** S5 | **Etap:** Sprint 1, tygodnie 2–3  
 **Priorytet:** MUST | **Rozmiar:** M | **Zależność:** S0-08
 
 Dokument określa, co należy przygotować w zadaniu dotyczącym ramki
-wiadomości dla steganografii LSB w obrazach. Obecny krok obejmuje wyłącznie
-opis formatu i wymagań. Moduł oraz testy pytest mają powstać w kolejnym
-kroku, po zakończeniu S0-08. Nie należy rozpoczynać implementacji w Sprincie 0.
+wiadomości dla steganografii LSB w obrazach. Zaimplementowano parser
+opisany poniżej. Funkcja pakująca i testy pytest pozostają do wykonania.
+Prace implementacyjne dotyczą Sprintu 1 i wymagają zakończenia S0-08.
 
 ## Cel i zakres
 
@@ -124,6 +124,29 @@ Przyszły czytnik LSB ma najpierw pobrać nagłówek, zweryfikować MAGIC,
 wersję i długość względem pojemności, a dopiero potem pobrać payload.
 Niewykorzystane próbki obrazu mają pozostawać poza ramką.
 
+## Zaimplementowany parser
+
+Parser znajduje się w `src/steganografia/frame.py` i udostępnia:
+
+- `parse_header(header, *, capacity_bytes)` — sprawdza dokładnie 13 bajtów
+  nagłówka, MAGIC, wersję i LENGTH względem pojemności obrazu. Zwraca
+  `FrameHeader` z polami `length`, `crc32` i właściwością `frame_size`.
+  Nie pobiera payloadu i nie przydziela dla niego pamięci.
+- `unpack(frame, *, capacity_bytes)` — sprawdza nagłówek oraz rzeczywisty
+  rozmiar kompletnej ramki przed dostępem do payloadu. Następnie weryfikuje
+  CRC32 i dekoduje tekst UTF-8. Odrzuca także nadmiarowe bajty.
+
+Obie funkcje przyjmują dane typu `bytes`. Parametr `capacity_bytes` oznacza
+pojemność całej ramki w bajtach i musi być liczbą całkowitą inną niż `bool`.
+Błędy ramki i pojemności zgłaszają `FrameError` (podklasa `ValueError`),
+a niewłaściwe typy argumentów — `TypeError`.
+
+Przyszły czytnik obrazu powinien najpierw pobrać 13 bajtów i wywołać
+`parse_header`. Dopiero po pomyślnej walidacji może pobrać `length` bajtów
+payloadu. Samo `unpack` przyjmuje bufor, który jest już w pamięci.
+
+Testów parsera jeszcze nie przygotowano ani nie uruchomiono.
+
 ## Plan testów pytest
 
 Po przygotowaniu implementacji należy sprawdzić:
@@ -156,10 +179,10 @@ dla LSB”. Są to proponowane wektory ramki projektu i przykład kontrolny CRC.
 
 ## Warunki ukończenia zadania
 
-W kolejnym kroku należy dostarczyć działający moduł i testy pytest.
+W kolejnym kroku należy dostarczyć funkcję pakującą i testy pytest.
 Całe zadanie będzie można uznać za ukończone po sprawdzeniu implementacji
-zgodnie z powyższymi wymaganiami. Obecna dokumentacja nie stanowi
-potwierdzenia wykonania modułu ani zaliczenia testów.
+zgodnie z powyższymi wymaganiami. Obecność parsera nie stanowi potwierdzenia
+zaliczenia testów ani ukończenia całego zadania.
 
 ## Informacja o wykorzystaniu AI
 

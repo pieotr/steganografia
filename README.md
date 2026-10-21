@@ -2,9 +2,9 @@
 
 Sprint 1, zadanie 1: zaplanowanie ramki tekstowej dla metody LSB.
 
-Obecny krok obejmuje wyłącznie [dokumentację planowanego formatu](docs/frame-v1.md).
-Opisuje ona pola ramki, kolejność bajtów i bitów, limity pojemności,
-wymagania dla parsera oraz testy, które należy przygotować.
+Przygotowano [dokumentację formatu](docs/frame-v1.md) oraz
+[parser ramki](src/steganografia/frame.py). Parser sprawdza rozmiar nagłówka,
+MAGIC, wersję i długość przed dostępem do payloadu, a następnie CRC32 i UTF-8.
 
-Implementacja modułu, testy pytest i osadzanie wiadomości w obrazie
+Funkcja pakująca, testy pytest i osadzanie wiadomości w obrazie
 pozostają do wykonania.
