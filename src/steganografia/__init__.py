@@ -18,6 +18,7 @@ from .lsb import (
     extract_frame,
     payload_capacity_bytes,
 )
+from .images import ImageError, load_cover, load_stego, save_png
 
 __all__ = [
     "HEADER_SIZE",
@@ -26,12 +27,16 @@ __all__ = [
     "VERSION",
     "FrameError",
     "FrameHeader",
+    "ImageError",
     "capacity_bytes",
     "embed_bits",
     "embed_frame",
     "extract_bits",
     "extract_frame",
+    "load_cover",
+    "load_stego",
     "parse_header",
     "payload_capacity_bytes",
+    "save_png",
     "unpack",
 ]
