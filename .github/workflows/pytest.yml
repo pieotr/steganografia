@@ -1,0 +1,29 @@
+name: Testy pytest
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Zainstaluj projekt i zależności testowe
+        run: python -m pip install -e ".[test]"
+      - name: Uruchom pytest i zapisz raport
+        run: python -m pytest -q --junitxml=reports/pytest.xml
+      - name: Zachowaj raport pytest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raport-pytest
+          path: reports/pytest.xml
+          if-no-files-found: warn

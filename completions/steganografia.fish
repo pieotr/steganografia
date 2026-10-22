@@ -1,0 +1,9 @@
+# Uzupełnienia dla zainstalowanej komendy steganografia.
+complete -c steganografia -f
+complete -c steganografia -n __fish_use_subcommand -a embed -d 'Ukryj tekst w PNG'
+complete -c steganografia -n __fish_use_subcommand -a extract -d 'Odczytaj tekst z PNG'
+complete -c steganografia -n __fish_use_subcommand -a capacity -d 'Pokaż pojemność PNG'
+complete -c steganografia -s h -l help -d 'Pokaż pomoc'
+complete -c steganografia -n '__fish_seen_subcommand_from embed' -l text -r -d 'Wiadomość UTF-8'
+complete -c steganografia -n '__fish_seen_subcommand_from embed' -l overwrite -d 'Zezwól na nadpisanie pliku'
+complete -c steganografia -n '__fish_seen_subcommand_from embed extract capacity' -a '(__fish_complete_suffix .png)' -d 'Plik obrazu'
