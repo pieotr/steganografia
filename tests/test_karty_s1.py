@@ -18,6 +18,7 @@ from steganografia import (
     extract_frame,
     load_cover,
     load_stego,
+    pack,
     payload_capacity_bytes,
     save_png,
 )
@@ -34,6 +35,19 @@ def test_s101_naglowek_ma_13_bajtow():
     assert HEADER_SIZE == 13
 
 
+@pytest.mark.parametrize("payload", [b"", b"123456789", "Zażółć gęślą jaźń".encode("utf-8")])
+def test_s101_crc_z_referencyjnym_algorytmem_bitowym(payload):
+    crc = 0xFFFFFFFF
+    for byte in payload:
+        crc ^= byte
+        for _ in range(8):
+            crc = (crc >> 1) ^ (0xEDB88320 if crc & 1 else 0)
+    crc ^= 0xFFFFFFFF
+    assert zlib.crc32(payload) == crc
+    ramka = pack(payload.decode("utf-8"), capacity_bytes=HEADER_SIZE + len(payload))
+    assert int.from_bytes(ramka[9:13], "big") == crc
+
+
 def test_s101_staly_wektor_niezalezny_od_funkcji_pakujacej():
     # Ramka zapisana "na sztywno" (bajty), bez użycia struct/zlib.
     # CRC32("123456789") = 0xCBF43926 to standardowa wartość kontrolna CRC-32.
@@ -45,12 +59,14 @@ def test_s101_staly_wektor_niezalezny_od_funkcji_pakujacej():
         b"123456789"             # PAYLOAD
     )
     assert zlib.crc32(b"123456789") == 0xCBF43926
+    assert pack("123456789", capacity_bytes=len(ramka)) == ramka
     assert unpack(ramka, capacity_bytes=1000) == "123456789"
 
 
 def test_s101_pusty_tekst():
-    ramka = zbuduj_ramke(b"")
+    ramka = pack("", capacity_bytes=13)
     assert len(ramka) == 13
+    assert ramka == bytes.fromhex("53 54 45 47 01 00 00 00 00 00 00 00 00")
     assert unpack(ramka, capacity_bytes=13) == ""
 
 
@@ -58,9 +74,43 @@ def test_s101_polskie_znaki_dlugosc_w_bajtach_utf8():
     tekst = "Zażółć gęślą jaźń"
     payload = tekst.encode("utf-8")
     assert len(payload) > len(tekst)  # bajty, nie znaki
-    ramka = zbuduj_ramke(payload)
+    ramka = pack(tekst, capacity_bytes=HEADER_SIZE + len(payload))
     assert struct.unpack(">I", ramka[5:9])[0] == len(payload)
     assert unpack(ramka, capacity_bytes=1000) == tekst
+
+
+def test_s101_pack_limit_liczony_w_bajtach():
+    assert unpack(pack("ą", capacity_bytes=15), capacity_bytes=15) == "ą"
+    with pytest.raises(FrameError, match="maksymalnie 1 B payloadu"):
+        pack("ą", capacity_bytes=14)
+
+
+@pytest.mark.parametrize("capacity", [0, 12, -1])
+def test_s101_pack_nie_miesci_naglowka(capacity):
+    with pytest.raises(FrameError, match="nie mieści nagłówka"):
+        pack("", capacity_bytes=capacity)
+
+
+@pytest.mark.parametrize("capacity", [True, 13.0, "13", None])
+def test_s101_pack_nieprawidlowy_typ_pojemnosci(capacity):
+    with pytest.raises(TypeError, match="capacity_bytes"):
+        pack("", capacity_bytes=capacity)
+
+
+def test_s101_pack_limit_pola_length(monkeypatch):
+    import steganografia.frame as frame_mod
+
+    monkeypatch.setattr(frame_mod, "MAX_PAYLOAD_SIZE", 2)
+    assert len(pack("ab", capacity_bytes=100)) == HEADER_SIZE + 2
+    with pytest.raises(FrameError, match="maksymalnie 2 B payloadu"):
+        pack("abc", capacity_bytes=100)
+
+
+def test_s101_pack_bledny_tekst():
+    with pytest.raises(TypeError, match="str"):
+        pack(b"abc", capacity_bytes=100)
+    with pytest.raises(FrameError, match="UTF-8"):
+        pack("\ud800", capacity_bytes=100)
 
 
 def test_s101_bledny_magic():
@@ -136,6 +186,8 @@ def test_s102_reczny_test_wartosci_zmienionych_bajtow():
     wynik = embed_bits(obraz, bity)
     oczekiwane = [255, 254, 1, 1, 170, 170, 85, 84, 200, 201, 10, 11]
     assert wynik.reshape(-1).tolist() == oczekiwane
+    # Ekstrakcja ze stałych próbek, niezależnie od wyniku osadzania.
+    assert extract_bits(np.array(oczekiwane, dtype=np.uint8).reshape(2, 2, 3), 8).tolist() == bity
 
 
 def test_s102_pojemnosc_netto_uwzglednia_naglowek():
@@ -151,9 +203,16 @@ def test_s102_dokladnie_na_granicy_pojemnosci_dziala():
     assert extract_frame(embed_frame(obraz, ramka)) == ramka
 
 
+def test_s102_ramka_zapisuje_bajty_msb_first():
+    obraz = np.zeros((8, 8, 3), dtype=np.uint8)
+    wynik = embed_frame(obraz, pack("", capacity_bytes=24))
+    # MAGIC zaczyna się od ASCII S = 0x53, czyli 01010011.
+    assert wynik.reshape(-1)[:8].tolist() == [0, 1, 0, 1, 0, 0, 1, 1]
+
+
 def test_s102_przekroczenie_o_jeden_bajt_daje_blad():
     obraz = _obraz_losowy(8, 8)
-    with pytest.raises(FrameError):
+    with pytest.raises(FrameError, match="maksymalnie 11 B payloadu"):
         embed_frame(obraz, zbuduj_ramke(b"a" * 12))
 
 
@@ -183,6 +242,7 @@ def test_s102_brak_modyfikacji_niewykorzystanych_probek_i_wyzszych_bitow():
     assert np.array_equal(a[:uzyte] >> 1, b[:uzyte] >> 1)
     # oryginał nie został zmodyfikowany (zwracana jest kopia)
     assert not np.shares_memory(obraz, wynik)
+    assert np.array_equal(obraz, _obraz_losowy(8, 8, seed=1))
 
 
 # ======================= S1-03: PNG i przepływ plikowy =======================
@@ -194,7 +254,7 @@ def test_s103_integracja_na_prawdziwym_pliku_png(tmp_path):
     oryginal_bajty = cover_path.read_bytes()
 
     payload = "Zażółć gęślą jaźń".encode("utf-8")
-    ramka = zbuduj_ramke(payload)
+    ramka = pack(payload.decode("utf-8"), capacity_bytes=capacity_bytes(load_cover(cover_path)))
     save_png(embed_frame(load_cover(cover_path), ramka), stego_path)
 
     # oryginał nie został nadpisany
@@ -240,10 +300,11 @@ def test_s103_nieobslugiwany_tryb_16_bit(tmp_path):
         load_cover(sciezka)
 
 
-def test_s103_przekroczenie_limitu_rozmiaru(tmp_path, monkeypatch):
+@pytest.mark.parametrize("limit", ["MAX_PIXELS", "MAX_DIMENSION", "MAX_FILE_BYTES"])
+def test_s103_przekroczenie_limitu_rozmiaru(tmp_path, monkeypatch, limit):
     sciezka = tmp_path / "duzy.png"
     Image.new("RGB", (20, 20)).save(sciezka)
-    monkeypatch.setattr(images_mod, "MAX_PIXELS", 100)  # 20*20 = 400 > 100
+    monkeypatch.setattr(images_mod, limit, 10)
     with pytest.raises(ImageError, match="przekracza limit"):
         load_cover(sciezka)
 

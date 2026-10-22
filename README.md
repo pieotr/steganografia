@@ -11,9 +11,10 @@ from steganografia import (
     extract_frame,
     payload_capacity_bytes,
 )
-from steganografia.frame import unpack
+from steganografia.frame import pack, unpack
 
 max_payload = payload_capacity_bytes(image)
+frame_bytes = pack("Zażółć gęślą jaźń", capacity_bytes=capacity_bytes(image))
 encoded_image = embed_frame(image, frame_bytes)
 frame_bytes = extract_frame(encoded_image)
 text = unpack(frame_bytes, capacity_bytes=capacity_bytes(image))
@@ -22,8 +23,8 @@ text = unpack(frame_bytes, capacity_bytes=capacity_bytes(image))
 Ramka ma 13-bajtowy nagłówek; `payload_capacity_bytes` zwraca pojemność
 netto po jego odjęciu. Szczegóły kolejności próbek i bitów opisano w
 [dokumentacji formatu i LSB](docs/frame-v1.md).
-`frame_bytes` oznacza kompletną ramkę utworzoną przez moduł pakujący zgodny
-z formatem STEG v1; samo pakowanie tekstu pozostaje osobnym zadaniem.
+`pack(text, *, capacity_bytes)` tworzy kompletną ramkę STEG v1 z tekstu
+UTF-8 i sprawdza długość w bajtach względem pojemności obrazu.
 
 ## Pliki obrazów (Pillow)
 
@@ -48,9 +49,12 @@ do wyniku. Dopuszczalne głębie wejściowego PNG to 1, 2, 4 i 8 bitów,
 zgodnie z dozwolonymi kombinacjami PNG; inne tryby są odrzucane.
 
 ```python
-from steganografia import load_cover, load_stego, save_png, embed_frame, extract_frame
+from steganografia import (
+    capacity_bytes, pack, load_cover, load_stego, save_png, embed_frame, extract_frame,
+)
 
 cover = load_cover("oryginal.png")
+frame_bytes = pack("Zażółć gęślą jaźń", capacity_bytes=capacity_bytes(cover))
 encoded = embed_frame(cover, frame_bytes)
 save_png(encoded, "wiadomosc.png")
 recovered_bytes = extract_frame(load_stego("wiadomosc.png"))
@@ -73,3 +77,13 @@ zapis również sprawdza wymiary i rozmiar pliku wynikowego. Błędne,
 nieobsługiwane i zbyt duże pliki oraz błędy zapisu zgłaszają `ImageError`
 z opisem przyczyny. Limit wiadomości pozostaje zależny od pojemności LSB
 i jest zgłaszany jako `FrameError`.
+
+## Testy
+
+```sh
+python -m pip install -e ".[test]"
+python -m pytest -q
+```
+
+Testy w `tests/` sprawdzają ramkę i CRC32, reguły LSB oraz pełny zapis
+i ponowny odczyt rzeczywistego PNG.

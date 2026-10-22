@@ -1,13 +1,12 @@
-# Plan formatu ramki — Sprint 1, zadanie 1 (LSB)
+# Specyfikacja formatu ramki — Sprint 1, zadanie 1 (LSB)
 
-**Status: dokumentacja, parser ramki i osadzanie/odczyt LSB. Pakowanie ramki i testy pozostają do wykonania.**
+**Status: zaimplementowano pakowanie i parser ramki, rdzeń LSB oraz obsługę PNG. Testy odbioru znajdują się w `tests/test_karty_s1.py`.**
 
 **Właściciel:** S1 | **Sprawdza:** S5 | **Etap:** Sprint 1, tygodnie 2–3  
 **Priorytet:** MUST | **Rozmiar:** M | **Zależność:** S0-08
 
-Dokument określa, co należy przygotować w zadaniu dotyczącym ramki
-wiadomości dla steganografii LSB w obrazach. Zaimplementowano parser
-opisany poniżej. Funkcja pakująca i testy pytest pozostają do wykonania.
+Dokument określa format ramki wiadomości dla steganografii LSB w obrazach.
+Zaimplementowano pakowanie tekstu, parser oraz testy pytest opisane poniżej.
 Prace implementacyjne dotyczą Sprintu 1 i wymagają zakończenia S0-08.
 
 ## Cel i zakres
@@ -21,13 +20,13 @@ ani normalizacji Unicode w ramach tego zadania.
 Osadzanie ramki w pikselach obrazu jest osobnym krokiem i jest zaimplementowane
 w `src/steganografia/lsb.py`.
 
-## Planowana budowa ramki
+## Budowa ramki
 
 ```text
 MAGIC(4 B) | VERSION(1 B) | LENGTH(4 B) | CRC32(4 B) | PAYLOAD
 ```
 
-| Offset (bajty) | Pole | Rozmiar | Planowane znaczenie |
+| Offset (bajty) | Pole | Rozmiar | Znaczenie |
 | --- | --- | --- | --- |
 | 0 | MAGIC | 4 B | Stała ASCII `STEG`, hex `53 54 45 47`, identyfikująca format |
 | 4 | VERSION | 1 B | Wersja formatu; dla pierwszej wersji należy przyjąć `01` |
@@ -84,7 +83,7 @@ co pozwala przenosić inne strumienie; ich pojemność to liczba próbek RGB.
 Przy przenoszeniu ramki należy użyć `embed_frame`/`extract_frame`, które
 walidują 13-bajtowy nagłówek i uwzględniają go w pojemności payloadu.
 
-## Planowana kontrola CRC32
+## Kontrola CRC32
 
 Należy zastosować **CRC-32/ISO-HDLC**, zgodne z `zlib.crc32`,
 z następującymi parametrami:
@@ -101,20 +100,19 @@ CRC ma obejmować wyłącznie payload. Wynik należy umieścić w nagłówku
 jako czterobajtową liczbę big-endian. Wariant reflected algorytmu CRC
 nie ma zmieniać ustalonej kolejności przesyłania bitów ramki.
 
-W przyszłych testach należy porównać CRC tekstu ASCII `123456789`
-z wartością kontrolną `0xCBF43926`. Dla pustego payloadu należy oczekiwać
-`0x00000000`. Źródło parametrów i wartości kontrolnej:
+Testy porównują CRC tekstu ASCII `123456789` z wartością kontrolną
+`0xCBF43926`. Dla pustego payloadu sprawdzana jest wartość `0x00000000`.
+Źródło parametrów i wartości kontrolnej:
 [CRC catalogue, CRC-32/ISO-HDLC](https://reveng.sourceforge.io/crc-catalogue/17plus.htm#crc.cat.crc-32-iso-hdlc).
 
 CRC ma służyć do wykrywania przypadkowych uszkodzeń.
 **Nie jest uwierzytelnieniem wiadomości** — osoba zmieniająca dane
 może obliczyć dla nich nową, pasującą sumę kontrolną.
 
-## Wymagania dla przyszłego modułu i parsera
+## Wymagania modułu i parsera
 
-Należy przygotować funkcję pakującą tekst do ramki oraz funkcję
-odczytującą tekst z ramki. Funkcja pakująca ma kodować tekst do UTF-8,
-sprawdzać limit długości, obliczać CRC32 i łączyć nagłówek z payloadem.
+Funkcja `pack` koduje tekst do UTF-8, sprawdza limit długości, oblicza
+CRC32 i łączy nagłówek z payloadem. Funkcja `unpack` odczytuje tekst z ramki.
 
 Parser ma sprawdzać kolejno:
 
@@ -131,14 +129,18 @@ lub alokacją bufora zależnego od LENGTH**. Niepoprawna ramka ma powodować
 zgłoszenie błędu, bez zwracania częściowej wiadomości.
 
 Parser ma przyjmować jedną kompletną ramkę i odrzucać nadmiarowe bajty.
-Przyszły czytnik LSB ma najpierw pobrać nagłówek, zweryfikować MAGIC,
-wersję i długość względem pojemności, a dopiero potem pobrać payload.
+Czytnik LSB najpierw pobiera nagłówek, weryfikuje MAGIC,
+wersję i długość względem pojemności, a dopiero potem pobiera payload.
 Niewykorzystane próbki obrazu mają pozostawać poza ramką.
 
-## Zaimplementowany parser
+## Zaimplementowany moduł ramki
 
-Parser znajduje się w `src/steganografia/frame.py` i udostępnia:
+Moduł `src/steganografia/frame.py` udostępnia:
 
+- `pack(text, *, capacity_bytes)` — przyjmuje `str`, koduje UTF-8 bez BOM,
+  terminatora i normalizacji Unicode, sprawdza limit bajtów payloadu
+  oraz zwraca kompletną ramkę `bytes` z CRC32. Obsługuje pusty tekst.
+  Tekst niemożliwy do zakodowania jako UTF-8 zgłasza `FrameError`.
 - `parse_header(header, *, capacity_bytes)` — sprawdza dokładnie 13 bajtów
   nagłówka, MAGIC, wersję i LENGTH względem pojemności obrazu. Zwraca
   `FrameHeader` z polami `length`, `crc32` i właściwością `frame_size`.
@@ -147,8 +149,9 @@ Parser znajduje się w `src/steganografia/frame.py` i udostępnia:
   rozmiar kompletnej ramki przed dostępem do payloadu. Następnie weryfikuje
   CRC32 i dekoduje tekst UTF-8. Odrzuca także nadmiarowe bajty.
 
-Obie funkcje przyjmują dane typu `bytes`. Parametr `capacity_bytes` oznacza
-pojemność całej ramki w bajtach i musi być liczbą całkowitą inną niż `bool`.
+`parse_header` i `unpack` przyjmują dane typu `bytes`.
+Parametr `capacity_bytes` oznacza pojemność całej ramki w bajtach
+i musi być liczbą całkowitą inną niż `bool`.
 Błędy ramki i pojemności zgłaszają `FrameError` (podklasa `ValueError`),
 a niewłaściwe typy argumentów — `TypeError`.
 
@@ -160,11 +163,9 @@ nadmiarową lub niepoprawną ramkę. Zapis tworzy kopię obrazu i zmienia
 wyłącznie LSB wykorzystanych próbek RGB; wyższe bity, alfa i niewykorzystane
 próbki pozostają bez zmian.
 
-Testów parsera jeszcze nie przygotowano ani nie uruchomiono.
+## Testy pytest
 
-## Plan testów pytest
-
-Po przygotowaniu implementacji należy sprawdzić:
+Testy w `tests/test_karty_s1.py` obejmują:
 
 - Pakowanie i odczyt pustego tekstu.
 - Obsługę polskich znaków, np. `Zażółć gęślą jaźń`, oraz długość w bajtach UTF-8.
@@ -175,9 +176,8 @@ Po przygotowaniu implementacji należy sprawdzić:
 - Odrzucanie błędnego UTF-8, nawet gdy CRC jest poprawne.
 - Przyjęcie ramki mieszczącej się dokładnie w limicie i odrzucenie większej.
 
-Co najmniej jeden test parsera ma korzystać ze stałej ramki zapisanej
-bez wywoływania funkcji pakującej. Proponowane wektory do przyszłej
-weryfikacji:
+Test parsera korzysta ze stałej ramki zapisanej bez wywoływania funkcji
+pakującej. Wynik `pack` jest także porównywany ze stałymi wektorami:
 
 ```text
 Tekst: ""
@@ -187,21 +187,37 @@ Tekst: "123456789"
 53 54 45 47 01 00 00 00 09 CB F4 39 26 31 32 33 34 35 36 37 38 39
 ```
 
-CRC należy dodatkowo sprawdzić niezależnie od funkcji pakującej,
-np. za pomocą referencyjnego algorytmu bitowego i wartości kontrolnej
-podanej w źródle. Nie należy określać tych przykładów jako „wektorów NIST
-dla LSB”. Są to proponowane wektory ramki projektu i przykład kontrolny CRC.
+CRC jest dodatkowo sprawdzane niezależnie od funkcji pakującej za pomocą
+referencyjnego algorytmu bitowego i wartości kontrolnej podanej w źródle.
+Nie są to „wektory NIST dla LSB”, lecz wektory ramki projektu i przykład
+kontrolny CRC.
 
-## Warunki ukończenia zadania
+## Weryfikacja odbioru
 
-W kolejnym kroku należy dostarczyć funkcję pakującą i testy pytest.
-Całe zadanie będzie można uznać za ukończone po sprawdzeniu implementacji
-zgodnie z powyższymi wymaganiami. Obecność parsera nie stanowi potwierdzenia
-zaliczenia testów ani ukończenia całego zadania.
+Po zainstalowaniu zależności testowych uruchom z katalogu projektu:
+
+```sh
+python -m pip install -e ".[test]"
+python -m pytest -q
+```
+
+Konfiguracja pytest wykrywa testy w `tests/`. Zestaw obejmuje kryteria
+ramki (S1-01), LSB (S1-02) i obsługi obrazów (S1-03). Test LSB zawiera
+ręcznie wyznaczone wartości próbek, sprawdza pojemność i zachowanie
+niewykorzystanych próbek oraz wyższych bitów. Test integracyjny Pillow
+tworzy rzeczywisty plik PNG, osadza ramkę, zapisuje nowy plik i ponownie
+go otwiera, porównując odzyskane bajty. Sprawdzane są również błędy
+wejścia, limity, normalizacja i ochrona przed nadpisaniem oryginału.
+
+Weryfikacja z 22 października 2026: **46 testów przeszło** (Python 3.14,
+pytest 9.1.1, Pillow 12.3.0, NumPy 2.5.4). Uruchomiono cały zestaw
+przez `python -m pytest -q` w tymczasowym środowisku testowym.
 
 ## Informacja o wykorzystaniu AI
 
 Przy opracowaniu dokumentacji korzystano z narzędzia ChatGPT (OpenAI)
 do przygotowania i uporządkowania opisu planowanego formatu ramki,
 wymagań walidacji oraz propozycji testów. 
-Jako wejście AI była opisana cała struktura, koncept działania i realizacji ramki, agent kodujący jedynie uporządkował te założenia i przygotował je w sformatowanym formacie MD
+Jako wejście AI opisano strukturę, koncepcję działania i realizacji ramki.
+Agent uporządkował te założenia w dokumencie Markdown, a następnie pomógł
+uzupełnić implementację pakowania, testy i dokumentację weryfikacji.

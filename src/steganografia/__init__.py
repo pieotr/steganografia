@@ -7,6 +7,7 @@ from .frame import (
     VERSION,
     FrameError,
     FrameHeader,
+    pack,
     parse_header,
     unpack,
 )
@@ -35,6 +36,7 @@ __all__ = [
     "extract_frame",
     "load_cover",
     "load_stego",
+    "pack",
     "parse_header",
     "payload_capacity_bytes",
     "save_png",
