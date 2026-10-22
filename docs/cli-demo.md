@@ -35,6 +35,24 @@ wiersza. Pojemność i pozostałe komunikaty trafiają na stderr, więc nie
 trafią do `odzyskany.txt`. Nie łącz strumieni przez `2>&1` podczas zapisu tekstu.
 Przekierowanie `>` nadpisuje wskazany plik tekstowy zgodnie z regułami powłoki.
 
+## Wiadomość z pliku TXT i odzyskanie do TXT
+
+Przygotuj plik UTF-8, a następnie użyj `--text-file` zamiast `--text`:
+
+```sh
+python -c "from pathlib import Path; Path('demo/wiadomosc.txt').write_bytes('Zażółć gęślą jaźń\nDrugi wiersz.\n'.encode('utf-8'))"
+steganografia embed demo/oryginal.png demo/z-pliku.png --text-file demo/wiadomosc.txt
+steganografia extract demo/z-pliku.png --output demo/odzyskany-z-pliku.txt
+```
+
+`--output` można skrócić do `-o`. Zapisuje dokładne bajty wiadomości UTF-8,
+z zachowaniem końców wierszy i ewentualnego BOM. Nie dopisuje końca wiersza
+ani BOM. Na stdout nie trafia wtedy tekst; komunikat o zapisie trafia na stderr.
+Istniejący TXT jest chroniony przed nadpisaniem, chyba że podasz
+`--overwrite`. Katalog docelowy musi istnieć. Niepoprawna ramka nie zmienia
+pliku docelowego. Dozwolona jest dokładnie jedna opcja źródła wiadomości:
+`--text` albo `--text-file`.
+
 ## Komunikaty błędów
 
 Dla obrazu 40×40 payload może zawierać maksymalnie 587 bajtów. Tekst

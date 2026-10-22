@@ -12,9 +12,25 @@ steganografia embed oryginal.png wiadomosc.png --text "Zażółć gęślą jaź�
 steganografia extract wiadomosc.png > odzyskany.txt
 ```
 
+Możesz też wczytać wiadomość bezpośrednio z pliku TXT i zapisać odzyskany
+tekst bez przekierowania powłoki:
+
+```sh
+steganografia embed oryginal.png wiadomosc.png --text-file wiadomosc.txt
+steganografia extract wiadomosc.png --output odzyskany.txt
+```
+
+`--text` i `--text-file` są wzajemnie wykluczające; podaj dokładnie jedną
+z tych opcji. Plik wejściowy musi zawierać poprawny UTF-8. Zachowywane są
+wszystkie znaki, końce wierszy (również CRLF) i ewentualny BOM; nie jest
+dodawany nowy BOM ani koniec wiersza. `--output` (skrót `-o`) zapisuje tekst
+do wskazanego pliku i pozostawia stdout pusty. Istniejący plik tekstowy
+jest chroniony; nadpisanie wymaga `extract --output odzyskany.txt --overwrite`.
+Katalog docelowy musi istnieć. Błędna ramka nie tworzy ani nie nadpisuje TXT.
+
 `odzyskany.txt` zawiera dokładny tekst UTF-8, bez dodanego końca wiersza.
 `embed` i `extract` wypisują informacje o pojemności na stderr,
-a `extract` wysyła na stdout wyłącznie odzyskany tekst. Pojemność jest
+a `extract` bez `--output` wysyła na stdout wyłącznie odzyskany tekst. Pojemność jest
 liczona w bajtach UTF-8, po odjęciu 13-bajtowego nagłówka ramki.
 Istniejący PNG można nadpisać wyłącznie z flagą `--overwrite`.
 Kod zakończenia: `0` — sukces, `1` — błąd danych lub pliku,
