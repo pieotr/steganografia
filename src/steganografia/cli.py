@@ -37,7 +37,7 @@ def _parser() -> argparse.ArgumentParser:
             "Ukryj tekst w obrazie wejściowym i zapisz wynikowy PNG pod ścieżką "
             "podaną jako drugi argument (WYJŚCIE). Ścieżki względne są liczone "
             "od bieżącego katalogu terminala. Katalog docelowy musi istnieć. "
-            "Istniejący plik można nadpisać wyłącznie z --overwrite."
+            "Istniejący plik można nadpisać wyłącznie z --force."
         ),
         epilog=(
             'Przykład: steganografia embed oryginal.png wynik.png --text "Cześć!" '
@@ -56,7 +56,7 @@ def _parser() -> argparse.ArgumentParser:
         help="wczytaj wiadomość z pliku UTF-8, zachowując końce wierszy",
     )
     embed.add_argument(
-        "--overwrite", action="store_true",
+        "--force", "--overwrite", dest="overwrite", action="store_true",
         help="jawnie zezwól na nadpisanie istniejącego pliku wynikowego",
     )
 
@@ -67,7 +67,7 @@ def _parser() -> argparse.ArgumentParser:
         help="zapisz tekst UTF-8 do pliku; domyślnie tekst trafia na stdout",
     )
     extract.add_argument(
-        "--overwrite", action="store_true",
+        "--force", "--overwrite", dest="overwrite", action="store_true",
         help="jawnie zezwól na nadpisanie pliku tekstowego wskazanego przez --output",
     )
 
@@ -89,8 +89,7 @@ def _parser() -> argparse.ArgumentParser:
         help="ścieżka zapisu wynikowego pliku .jpg lub .jpeg",
     )
     jpeg.add_argument(
-        "--overwrite",
-        action="store_true",
+        "--force", "--overwrite", dest="overwrite", action="store_true",
         help="jawnie zezwól na nadpisanie istniejącego pliku",
     )
     return parser
@@ -109,11 +108,11 @@ def _read_text(path: str, limit: int) -> str:
         print(f"Rozmiar pliku TXT: {os.fstat(stream.fileno()).st_size} B tekstu UTF-8 ({path}).", file=sys.stderr)
         payload = stream.read(limit + 1)
     if len(payload) > limit:
-        raise FrameError(f"Plik tekstowy przekracza pojemność obrazu: maksymalnie {limit} B tekstu UTF-8")
+        raise FrameError(f"za długa wiadomość: plik tekstowy przekracza pojemność obrazu: maksymalnie {limit} B tekstu UTF-8")
     try:
         return payload.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise FrameError(f"Plik tekstowy '{path}' nie jest poprawnym UTF-8") from exc
+        raise FrameError(f"plik tekstowy '{path}' nie jest poprawnym UTF-8") from exc
 
 
 def _save_text(text: str, path: str, *, overwrite: bool) -> None:
@@ -137,8 +136,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     """Uruchom CLI; kod 0 oznacza sukces, 1 błąd danych/pliku, 2 błąd składni."""
     parser = _parser()
     args = parser.parse_args(argv)
+    args.overwrite = bool(getattr(args, "overwrite", False))
     if args.command == "extract" and args.overwrite and args.output is None:
-        parser.error("--overwrite wymaga --output wskazującego plik tekstowy")
+        parser.error("--force wymaga --output wskazującego plik tekstowy")
     try:
         if args.command == "extract":
             image = load_stego(args.input)
@@ -146,19 +146,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 frame = extract_frame(image)
                 text = unpack(frame, capacity_bytes=capacity_bytes(image))
             except FrameError as exc:
-                raise FrameError(f"Niepoprawna ramka STEG: {exc}") from exc
+                raise FrameError(f"niepoprawna ramka STEG: {str(exc).lower()}") from exc
             print(_capacity_message(image), file=sys.stderr)
             if args.output is not None:
                 _save_text(text, args.output, overwrite=args.overwrite)
                 print(f"Zapisano tekst UTF-8: {args.output}", file=sys.stderr)
             else:
-                # Bez dodawania końca wiersza: przekierowanie zachowuje dokładny tekst.
                 sys.stdout.write(text)
         else:
             if args.command == "jpeg":
+                if Path(args.input).resolve() == Path(args.output).resolve():
+                    raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
                 png_to_jpeg(args.input, args.output, overwrite=args.overwrite)
                 print(f"Zapisano JPEG: {args.output}", file=sys.stderr)
                 return 0
+            if Path(args.input).resolve() == Path(args.output).resolve():
+                raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
             image = load_cover(args.input)
             message = _capacity_message(image)
             if args.command == "capacity":
@@ -177,7 +180,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if isinstance(exc, FileExistsError) or isinstance(exc.__cause__, FileExistsError):
             message = (
                 f"Plik '{args.output}' już istnieje; "
-                "wybierz nową nazwę lub jawnie podaj --overwrite"
+                "wybierz nową nazwę lub jawnie podaj --force"
             )
         print(f"Błąd: {message}", file=sys.stderr)
         return 1
