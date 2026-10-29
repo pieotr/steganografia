@@ -1,4 +1,9 @@
-"""Testy CLI: capacity, embed, extract (w tym polskie znaki i błędy)."""
+"""Testy CLI: capacity, embed, extract (w tym polskie znaki i błędy).
+
+Dostosowane do CLI opisanego w README repozytorium: flaga nadpisywania to
+--overwrite (dla embed i dla extract --output), a komunikaty błędów pochodzą
+wprost z FrameError/ImageError (np. "Niepoprawna ramka STEG: ...").
+"""
 
 import os
 from pathlib import Path
@@ -45,7 +50,7 @@ def test_embed_z_pliku_i_extract_do_pliku(cover, tmp_path, capsys):
     stego = tmp_path / "stego.png"
     odzyskane = tmp_path / "odzyskane.txt"
     assert main(["embed", str(cover), str(stego), "--text-file", str(wejscie)]) == 0
-    assert main(["extract", str(stego), "-o", str(odzyskane)]) == 0
+    assert main(["extract", str(stego), "--output", str(odzyskane)]) == 0
     assert odzyskane.read_text(encoding="utf-8") == TEKST
 
 
@@ -54,7 +59,9 @@ def test_za_dluga_wiadomosc_czytelny_blad(cover, tmp_path, capsys):
     za_dluga = "a" * (1350 - HEADER_SIZE + 1)  # o jeden bajt za dużo
     assert main(["embed", str(cover), str(stego), "--text", za_dluga]) == 1
     err = capsys.readouterr().err
-    assert "za długa" in err and "1337 B" in err
+    # Komunikat pochodzi z FrameError (parse_header): czytelny, podaje limit.
+    assert "przekracza pojemność obrazu" in err
+    assert "1337 B" in err
     assert not stego.exists()
 
 
@@ -67,7 +74,7 @@ def test_extract_z_obrazu_bez_wiadomosci(tmp_path, capsys):
     pusty = tmp_path / "pusty.png"
     Image.new("RGB", (40, 40)).save(pusty)
     assert main(["extract", str(pusty)]) == 1
-    assert "niepoprawna ramka" in capsys.readouterr().err
+    assert "Niepoprawna ramka STEG" in capsys.readouterr().err
 
 
 def test_extract_uszkodzona_ramka_crc(cover, tmp_path, capsys):
@@ -82,19 +89,30 @@ def test_extract_uszkodzona_ramka_crc(cover, tmp_path, capsys):
     assert "CRC32" in capsys.readouterr().err
 
 
-def test_nie_nadpisuje_bez_force(cover, tmp_path, capsys):
+def test_nie_nadpisuje_bez_overwrite(cover, tmp_path, capsys):
     stego = tmp_path / "stego.png"
     assert main(["embed", str(cover), str(stego), "--text", "raz"]) == 0
     assert main(["embed", str(cover), str(stego), "--text", "dwa"]) == 1
     assert "już istnieje" in capsys.readouterr().err
-    assert main(["embed", str(cover), str(stego), "--text", "dwa", "--force"]) == 0
+    assert main(["embed", str(cover), str(stego), "--text", "dwa", "--overwrite"]) == 0
     capsys.readouterr()
     main(["extract", str(stego)])
     assert capsys.readouterr().out.strip() == "dwa"
 
 
+def test_extract_output_nie_nadpisuje_bez_overwrite(cover, tmp_path, capsys):
+    stego = tmp_path / "stego.png"
+    wyjscie = tmp_path / "odzyskane.txt"
+    main(["embed", str(cover), str(stego), "--text", "raz"])
+    assert main(["extract", str(stego), "--output", str(wyjscie)]) == 0
+    assert main(["extract", str(stego), "--output", str(wyjscie)]) == 1
+    assert "już istnieje" in capsys.readouterr().err
+    assert main(["extract", str(stego), "--output", str(wyjscie), "--overwrite"]) == 0
+    assert wyjscie.read_text(encoding="utf-8") == "raz"
+
+
 def test_wynik_nie_moze_byc_obrazem_wejsciowym(cover, capsys):
-    assert main(["embed", str(cover), str(cover), "--text", "x", "--force"]) == 1
+    assert main(["embed", str(cover), str(cover), "--text", "x", "--overwrite"]) == 1
     assert "różnić się" in capsys.readouterr().err
 
 
