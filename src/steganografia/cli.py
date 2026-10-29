@@ -1,4 +1,4 @@
-"""Komendy LSB łączące ramkę STEG v1 z odczytem i zapisem PNG."""
+"""Komendy LSB oraz konwersja PNG do JPEG z własnym pipeline'em DCT."""
 
 import argparse
 from collections.abc import Sequence
@@ -9,6 +9,7 @@ import tempfile
 
 from .frame import FrameError, pack, unpack
 from .images import ImageError, load_cover, load_stego, save_png
+from .jpeg import png_to_jpeg
 from .lsb import capacity_bytes, embed_frame, extract_frame, payload_capacity_bytes
 
 
@@ -71,6 +72,26 @@ def _parser() -> argparse.ArgumentParser:
 
     capacity = commands.add_parser("capacity", help="pokaż pojemność PNG przed osadzaniem")
     capacity.add_argument("input", metavar="WEJŚCIE", help="statyczny PNG do osadzania")
+
+    jpeg = commands.add_parser(
+        "jpeg",
+        help="przetwórz PNG przez DCT i zapisz wynik jako JPEG",
+        description=(
+            "Wczytaj PNG, wykonaj konwersję YCbCr, subsampling 4:2:0, DCT "
+            "i kwantyzację, a następnie zapisz własny baseline JPEG."
+        ),
+    )
+    jpeg.add_argument("input", metavar="WEJŚCIE", help="statyczny PNG źródłowy")
+    jpeg.add_argument(
+        "output",
+        metavar="WYJŚCIE",
+        help="ścieżka zapisu wynikowego pliku .jpg lub .jpeg",
+    )
+    jpeg.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="jawnie zezwól na nadpisanie istniejącego pliku",
+    )
     return parser
 
 
@@ -133,6 +154,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 # Bez dodawania końca wiersza: przekierowanie zachowuje dokładny tekst.
                 sys.stdout.write(text)
         else:
+            if args.command == "jpeg":
+                png_to_jpeg(args.input, args.output, overwrite=args.overwrite)
+                print(f"Zapisano JPEG: {args.output}", file=sys.stderr)
+                return 0
             image = load_cover(args.input)
             message = _capacity_message(image)
             if args.command == "capacity":
@@ -146,7 +171,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             frame = pack(text, capacity_bytes=capacity_bytes(image))
             save_png(embed_frame(image, frame), args.output, overwrite=args.overwrite)
             print(f"Zapisano PNG: {args.output}", file=sys.stderr)
-    except (FrameError, ImageError, OSError, UnicodeError) as exc:
+    except (FrameError, ImageError, OSError, UnicodeError, ValueError) as exc:
         message = str(exc)
         if isinstance(exc, FileExistsError) or isinstance(exc.__cause__, FileExistsError):
             message = (

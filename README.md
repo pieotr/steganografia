@@ -43,6 +43,137 @@ i [materiał do Sprint 1 Review](docs/sprint-1-review.md).
 
 ## API Pythona
 
+### Przygotowanie obrazu do DCT
+
+Obraz można wczytać istniejącym `load_cover`, a następnie przekonwertować
+z RGB do składowych JPEG: jasności `Y` oraz chrominancji `Cb` i `Cr`.
+Konwersja zwraca wartości `float64`, bez zaokrąglania, aby nie utracić
+dokładności przed kolejnym etapem DCT:
+
+```python
+from steganografia import load_cover, rgb_to_ycbcr
+
+rgb = load_cover("oryginal.png")
+ycbcr = rgb_to_ycbcr(rgb)
+print(ycbcr[0, 0])  # [Y, Cb, Cr]
+```
+
+Subsampling 4:2:0 można wykonać jako kolejny krok. `Y` pozostaje w pełnej
+rozdzielczości, a `Cb` i `Cr` są uśredniane w blokach 2×2:
+
+```python
+from steganografia import load_cover, rgb_to_ycbcr, subsample_420
+
+ycbcr = rgb_to_ycbcr(load_cover("oryginal.png"))
+y, cb, cr = subsample_420(ycbcr)
+print(y.shape, cb.shape, cr.shape)
+```
+
+To przygotowuje komponenty do dalszego kodowania JPEG, ale nie zapisuje
+jeszcze pliku i nie wykonuje dopełnienia do bloków 8×8.
+
+Pojedynczy blok 8×8 można pobrać po indeksie liczonym w kolejności
+wierszami (od zera):
+
+```python
+from steganografia import get_block
+
+block = get_block(y, index=0)
+print(block)
+```
+
+Jeśli rozmiar komponentu nie jest wielokrotnością 8, brakujące wartości są
+uzupełniane przez powielenie ostatniego wiersza lub kolumny.
+
+Na pojedynczym bloku można teraz wykonać DCT:
+
+```python
+from steganografia import dct_block, get_block
+
+block = get_block(y, index=0)
+coefficients = dct_block(block)
+print(coefficients)
+```
+
+Przed transformacją domyślnie odejmowane jest 128 (`level shift`), ponieważ
+próbki obrazu mają zakres 0–255, a DCT wygodniej analizuje wartości skupione
+wokół zera. Współczynnik `coefficients[0, 0]` (DC) opisuje średnią jasność
+bloku, a pozostałe współczynniki (AC) opisują coraz szybsze zmiany jasności
+w poziomie i pionie. DCT nie kompresuje jeszcze danych i nie zaokrągla
+współczynników — robi to dopiero późniejsza kwantyzacja.
+
+Kwantyzację wykonujemy osobno dla luminancji i chrominancji:
+
+```python
+from steganografia import (
+    CHROMINANCE_QUANTIZATION,
+    LUMINANCE_QUANTIZATION,
+    dct_block,
+    get_block,
+    quantize_block,
+)
+
+dct = dct_block(get_block(y, index=0))
+quantized = quantize_block(dct, LUMINANCE_QUANTIZATION)
+```
+
+Współczynnik jest dzielony przez odpowiadającą mu wartość macierzy, a wynik
+zaokrąglany. Duże wartości macierzy, szczególnie przy wysokich
+częstotliwościach, powodują wyzerowanie wielu szczegółów. To właśnie tutaj
+pojawia się główna utrata jakości JPEG. Dla `Cb` i `Cr` używamy
+`CHROMINANCE_QUANTIZATION`.
+
+Po kwantyzacji współczynniki odczytujemy po zygzaku:
+
+```python
+from steganografia import quantize_block, zigzag_scan
+
+quantized = quantize_block(dct, LUMINANCE_QUANTIZATION)
+ordered = zigzag_scan(quantized)
+print(ordered)
+```
+
+Pierwszy element to współczynnik DC. Następne elementy to współczynniki AC,
+uporządkowane od niskich do wysokich częstotliwości. W praktycznym obrazie
+końcowa część tablicy często składa się z zer, dlatego taki układ jest
+korzystny dla następnego etapu, czyli kodowania długości serii (RLE).
+
+Gotowe, zmodyfikowane współczynniki można zapisać bez ponownego wykonywania
+DCT przez własny enkoder JPEG:
+
+```python
+from steganografia import write_jpeg
+
+write_jpeg(
+    "wynik.jpg",
+    width=128,
+    height=128,
+    y_blocks=y_blocks,
+    cb_blocks=cb_blocks,
+    cr_blocks=cr_blocks,
+)
+```
+
+`y_blocks`, `cb_blocks` i `cr_blocks` zawierają skwantyzowane bloki po
+`zigzag_scan`, w kolejności raster-scan komponentu. Dla kolorowego JPEG
+enkoder zapisuje układ 4:2:0: cztery bloki `Y`, jeden `Cb` i jeden `Cr` na
+każdą jednostkę MCU. Własny zapis wykonuje kodowanie DC, RLE AC, Huffmana,
+byte stuffing i nagłówki baseline JPEG.
+
+Cały pipeline dla PNG jest dostępny również w CLI:
+
+```sh
+steganografia jpeg oryginal.png wynik.jpg
+```
+
+Komenda wykonuje RGB→YCbCr, subsampling 4:2:0, DCT, kwantyzację,
+odczyt zygzakowy i zapis własnego JPEG. Istniejący plik wynikowy jest
+chroniony; jawne nadpisanie wymaga:
+
+```sh
+steganografia jpeg oryginal.png wynik.jpg --overwrite
+```
+
 Moduł [`lsb`](src/steganografia/lsb.py) udostępnia własne osadzanie i
 odczyt sekwencji bitów oraz kompletnych ramek STEG v1 w najmłodszych bitach
 próbek obrazu RGB/RGBA.
