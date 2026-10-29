@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Steganography — hide and reveal messages in images, audio, video, and text." />
+    <title>Steganography</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=02a338b" />
+    <link rel="shortcut icon" href="/favicon.ico?v=02a338b" />
+    <link rel="apple-touch-icon" href="/icon.png?v=02a338b" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <main class="app-shell">
+      <header class="brand-bar">
+        <div>
+          <p class="eyebrow">Project 06 · LSB / DCT</p>
+          <h1>Steganography</h1>
+        </div>
+        <div class="online-pill"><span></span>Online</div>
+      </header>
+
+      <section class="workspace" id="workspace" data-mode="crypt" data-state="idle">
+        <article class="tool-panel source-panel">
+          <div class="panel-heading">
+            <p class="section-kicker" id="sectionKicker">Hide information</p>
+            <h2 id="panelTitle">Hide text in an image</h2>
+            <p id="panelDescription">Choose an image and give it a secret message.</p>
+          </div>
+
+          <div class="media-selector field-block">
+            <div class="field-label-row">
+              <label for="mediaSelectButton">Carrier media</label>
+              <span>Select the kind of file to process</span>
+            </div>
+            <select id="mediaType" class="native-media-select" aria-hidden="true" tabindex="-1">
+              <option value="image">Images</option>
+              <option value="audio">Audio</option>
+              <option value="video">Video</option>
+              <option value="text">Text</option>
+            </select>
+            <div class="media-select" id="mediaSelect">
+              <button class="media-select-button" id="mediaSelectButton" type="button" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="mediaSelectList">
+                <span id="mediaSelectValue">Images</span>
+                <svg class="media-select-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5"/></svg>
+              </button>
+              <div class="media-select-list" id="mediaSelectList" role="listbox" aria-label="Carrier media type" hidden>
+                <button class="media-select-option" id="media-option-image" type="button" role="option" aria-selected="true" data-media-option="image">
+                  <span class="media-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m7 16 3.2-3.2 2.2 2.2 1.8-1.8L17 16"/></svg></span>
+                  <span>Images</span>
+                  <svg class="media-option-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>
+                </button>
+                <!--
+                <button class="media-select-option" id="media-option-audio" type="button" role="option" aria-selected="false" data-media-option="audio">
+                  <span class="media-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></span>
+                  <span>Audio</span>
+                  <svg class="media-option-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>
+                </button>
+                <button class="media-select-option" id="media-option-video" type="button" role="option" aria-selected="false" data-media-option="video">
+                  <span class="media-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></span>
+                  <span>Video</span>
+                  <svg class="media-option-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>
+                </button>
+                <button class="media-select-option" id="media-option-text" type="button" role="option" aria-selected="false" data-media-option="text">
+                  <span class="media-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12M12 4v16M8 20h8"/></svg></span>
+                  <span>Text</span>
+                  <svg class="media-option-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>
+                </button>
+                -->
+              </div>
+            </div>
+          </div>
+
+          <div class="mode-switch" role="tablist" aria-label="Processing mode">
+            <button class="mode-button active" id="cryptTab" type="button" role="tab" aria-selected="true" data-mode="crypt">
+              <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              Crypt
+            </button>
+            <button class="mode-button" id="decryptTab" type="button" role="tab" aria-selected="false" data-mode="decrypt">
+              <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M9 10V7a4 4 0 0 1 7.5-2"/></svg>
+              Decrypt
+            </button>
+          </div>
+
+          <form id="stegForm" novalidate>
+            <div class="field-block">
+              <div class="field-label-row">
+                <label for="fileInput" id="fileLabel">Carrier file</label>
+                <span id="fileStatus">PNG or JPG · Up to 10 MB</span>
+              </div>
+
+              <input id="fileInput" type="file" accept="image/png,image/jpeg" hidden />
+              <button class="dropzone" id="dropzone" type="button">
+                <span class="upload-icon" aria-hidden="true">
+                  <svg data-upload-icon="image" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m7 16 3.2-3.2 2.2 2.2 1.8-1.8L17 16"/></svg>
+                  <svg data-upload-icon="audio" viewBox="0 0 24 24" hidden><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
+                  <svg data-upload-icon="video" viewBox="0 0 24 24" hidden><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg>
+                  <svg data-upload-icon="text" viewBox="0 0 24 24" hidden><path d="M6 4h12M12 4v16M8 20h8"/></svg>
+                </span>
+                <strong id="dropzoneTitle">Drop an image here</strong>
+                <small>or <span>browse files</span></small>
+              </button>
+
+              <div class="file-preview" id="filePreview" hidden>
+                <button class="remove-file" id="removeFile" type="button" aria-label="Remove file" title="Remove file">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg>
+                </button>
+                <div class="preview-media">
+                  <img id="previewImage" alt="Selected image preview" />
+                  <div class="media-placeholder" id="mediaPlaceholder" hidden>
+                    <span id="mediaPlaceholderType">Audio</span>
+                    <small>File ready for processing</small>
+                  </div>
+                </div>
+                <div class="file-meta">
+                  <span class="file-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/></svg>
+                  </span>
+                  <span><strong id="fileName"></strong><small id="fileSize"></small></span>
+                  <button id="changeFile" type="button">Change</button>
+                </div>
+              </div>
+              <p class="field-error" id="fileError" role="alert"></p>
+            </div>
+
+            <div class="field-block message-field" id="messageField">
+              <div class="field-label-row">
+                <label for="secretMessage">Text to hide</label>
+                <span><b id="characterCount">0</b> characters</span>
+              </div>
+              <textarea id="secretMessage" maxlength="2000" rows="4" placeholder="Write the message you’d like to hide..."></textarea>
+            </div>
+
+            <div class="extracted-block" id="extractedBlock" hidden>
+              <div class="field-label-row">
+                <label for="extractedText">Extracted text</label>
+                <span class="success-label"><i></i>Text found</span>
+              </div>
+              <textarea id="extractedText" rows="4" readonly></textarea>
+              <p>Read-only · Your hidden message, revealed.</p>
+            </div>
+
+            <p class="process-message" id="processMessage" role="status"></p>
+            <button class="primary-button" id="proceedButton" type="submit">
+              <span>Proceed</span>
+              <svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
+            </button>
+          </form>
+        </article>
+
+        <div class="transfer-connector" id="transferConnector" aria-hidden="true">
+          <span></span><span></span><span></span>
+          <svg viewBox="0 0 24 24"><path d="M4 12h15m-5-5 5 5-5 5"/></svg>
+        </div>
+
+        <article class="tool-panel result-panel" id="resultPanel" aria-hidden="true">
+          <div class="result-heading">
+            <div>
+              <p class="section-kicker">Encoding result</p>
+              <h2 id="resultTitle">Image with a hidden message</h2>
+            </div>
+            <span class="result-status" id="resultStatus"><i></i><b>Processing</b></span>
+          </div>
+          <div class="result-media" id="resultMedia">
+            <div class="processing-orbit" aria-hidden="true"><span></span></div>
+            <p id="resultMessage">The script is preparing the encoded image…</p>
+            <img id="resultImage" alt="Image with a hidden message" hidden />
+            <div class="result-placeholder" id="resultPlaceholder" hidden></div>
+          </div>
+          <div class="result-footer" id="resultFooter" hidden>
+            <div><strong id="resultFileName">encoded-image.png</strong><small>Ready to download</small></div>
+            <button type="button" id="downloadButton">
+              <svg viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M5 20h14"/></svg>
+              Download
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <footer>Private processing · No files are stored permanently</footer>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

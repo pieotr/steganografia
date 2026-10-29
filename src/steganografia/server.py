@@ -11,13 +11,35 @@ Dostępne endpointy:
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
+from pathlib import Path
+from typing import Optional, Sequence, Union
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from werkzeug.exceptions import BadRequest
 
 from .api import METHOD_REGISTRY, image_to_base64, load_png_from_bytes, read_png_bytes
+
+
+def _resolve_frontend_dir() -> Path:
+    packaged = Path(__file__).resolve().parent / "static"
+    if packaged.exists():
+        return packaged
+
+    candidates = (
+        Path(__file__).resolve().parents[3] / "steganography-frontend",
+        Path(__file__).resolve().parents[2] / "steganography-frontend",
+        Path(__file__).resolve().parents[1] / "steganography-frontend",
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return packaged
+
+
+FRONTEND_DIR = _resolve_frontend_dir()
 
 
 OPENAPI_SPEC = {
@@ -116,11 +138,16 @@ def _resolve_method(method_name: str):
         raise ValueError(str(exc)) from exc
 
 
-def create_app() -> Flask:
+def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> Flask:
     """Funkcja fabryki aplikacji Flask. Ułatwia testowanie i uruchamianie."""
-    app = Flask(__name__)
+    static_dir = Path(frontend_dir) if frontend_dir is not None else FRONTEND_DIR
+    app = Flask(__name__, static_folder=str(static_dir), static_url_path="")
     app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024
     app.config["JSON_SORT_KEYS"] = False
+
+    @app.get("/")
+    def index():
+        return send_from_directory(app.static_folder, "index.html")
 
     @app.errorhandler(BadRequest)
     def handle_bad_request(exc: BadRequest):
@@ -232,11 +259,22 @@ def create_app() -> Flask:
     return app
 
 
-def main() -> None:
-    """Uruchom serwer deweloperski."""
-    app = create_app()
-    port = int(os.environ.get("PORT", "5000"))
-    app.run(host="0.0.0.0", port=port, debug=False)
+def main(argv: Optional[Sequence[str]] = None) -> None:
+    """Uruchom serwer deweloperski z opcjonalnym konfigurowaniem hosta, portu i frontendu."""
+    parser = argparse.ArgumentParser(description="Uruchom Flask API z zintegrowanym frontendem steganografii.")
+    parser.add_argument("--host", default=os.environ.get("HOST", "0.0.0.0"), help="Host nasłuchu (domyślnie 0.0.0.0).")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "5000")), help="Port nasłuchu (domyślnie 5000).")
+    parser.add_argument(
+        "--frontend-dir",
+        type=Path,
+        default=FRONTEND_DIR,
+        help="Katalog ze statycznym frontendem do podania przez Flask.",
+    )
+    parser.add_argument("--debug", action="store_true", help="Włącz debug mode Flask.")
+    args = parser.parse_args(argv)
+
+    app = create_app(args.frontend_dir)
+    app.run(host=args.host, port=args.port, debug=args.debug)
 
 
 if __name__ == "__main__":

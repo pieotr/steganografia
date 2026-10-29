@@ -45,11 +45,20 @@ Uruchomienie:
 
 ```sh
 python -m pip install -e .
-steganografia-api
+steganografia-api --host 0.0.0.0 --port 5000
 ```
 
-Domyślny port to `5000`; pod adresem `/api/v1/swagger` działa przeglądarka
-Swagger UI, a spec OpenAPI jest dostępna pod `/api/v1/openapi.json`.
+Alternatywnie można uruchomić bez instalacji z katalogu projektu:
+
+```sh
+python -m steganografia.server --host 0.0.0.0 --port 5000
+```
+
+Frontend jest zintegrowany z pakietem aplikacji i znajduje się w `src/steganografia/static/`.
+Jest hostowany w tym samym procesie Flask, więc strona główna jest dostępna pod
+`http://localhost:5000/`, a API pozostaje pod `/api/v1/*`. Domyślny port to `5000`;
+pod adresem `/api/v1/swagger` działa przeglądarka Swagger UI, a spec OpenAPI jest dostępna
+pod `/api/v1/openapi.json`.
 
 Najważniejsze endpointy:
 
