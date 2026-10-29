@@ -1,6 +1,7 @@
 """Osadzanie ramek STEG w najmłodszych bitach próbek RGB obrazu."""
 
 from collections.abc import Sequence
+from typing import Union
 
 import numpy as np
 
@@ -45,7 +46,7 @@ def _write_bytes(image: np.ndarray, data: bytes) -> np.ndarray:
     return embed_bits(image, bits)
 
 
-def embed_bits(image: np.ndarray, bits: Sequence[int] | np.ndarray) -> np.ndarray:
+def embed_bits(image: np.ndarray, bits: Union[Sequence[int], np.ndarray]) -> np.ndarray:
     """Osadź podaną sekwencję zer i jedynek w wybranych próbkach RGB."""
     samples = _rgb_samples(image)
     bit_values = np.asarray(bits)

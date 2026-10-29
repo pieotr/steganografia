@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+from typing import Optional
 
 from .frame import FrameError, pack, unpack
 from .images import ImageError, load_cover, load_stego, save_png
@@ -132,7 +133,7 @@ def _save_text(text: str, path: str, *, overwrite: bool) -> None:
             temporary.unlink(missing_ok=True)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Optional[Sequence[str]] = None) -> int:
     """Uruchom CLI; kod 0 oznacza sukces, 1 błąd danych/pliku, 2 błąd składni."""
     parser = _parser()
     args = parser.parse_args(argv)

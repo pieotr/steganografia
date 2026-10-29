@@ -36,6 +36,44 @@ Istniejący PNG można nadpisać wyłącznie z flagą `--overwrite`.
 Kod zakończenia: `0` — sukces, `1` — błąd danych lub pliku,
 `2` — błędna składnia komendy.
 
+## API Flask
+
+Dla frontendowca w projekcie jest dostępny też serwer Flask z endpointami dla
+LSB i z architekturą przygotowaną pod rozszerzenia o DCT.
+
+Uruchomienie:
+
+```sh
+python -m pip install -e .
+steganografia-api
+```
+
+Domyślny port to `5000`; pod adresem `/api/v1/swagger` działa przeglądarka
+Swagger UI, a spec OpenAPI jest dostępna pod `/api/v1/openapi.json`.
+
+Najważniejsze endpointy:
+
+- `GET /api/v1/health` — status serwera,
+- `POST /api/v1/lsb/capacity` — pojemność obrazu PNG,
+- `POST /api/v1/lsb/embed` — osadzenie tekstu w PNG,
+- `POST /api/v1/lsb/extract` — odczyt tekstu z PNG.
+
+Przykład `curl`:
+
+```sh
+curl -X POST http://localhost:5000/api/v1/lsb/capacity \
+  -F "file=@oryginal.png"
+
+curl -X POST http://localhost:5000/api/v1/lsb/embed \
+  -F "file=@oryginal.png" \
+  -F "text=Cześć od frontendowca!"
+
+curl -X POST http://localhost:5000/api/v1/lsb/extract \
+  -F "file=@stego.png"
+```
+
+Dokumentacja bardziej szczegółowa znajduje się w [docs/api.md](docs/api.md).
+
 Pełna [demonstracja CLI](docs/cli-demo.md) tworzy wejściowy PNG i prowadzi
 przez zapis oraz ponowny odczyt. Zobacz też
 [raport weryfikacji](docs/reports/cli-verification.md)

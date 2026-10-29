@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import os
+from os import PathLike
 from pathlib import Path
 import struct
 import tempfile
-from typing import Iterable, Sequence
+from typing import Iterable, Optional, Sequence, Union
 
 import numpy as np
 
@@ -180,13 +181,13 @@ def _validate_blocks(blocks: Iterable[Sequence[int]], name: str) -> list[Sequenc
 
 
 def write_jpeg(
-    path: str | Path,
+    path: Union[str, Path],
     *,
     width: int,
     height: int,
     y_blocks: Iterable[Sequence[int]],
-    cb_blocks: Iterable[Sequence[int]] | None = None,
-    cr_blocks: Iterable[Sequence[int]] | None = None,
+    cb_blocks: Optional[Iterable[Sequence[int]]] = None,
+    cr_blocks: Optional[Iterable[Sequence[int]]] = None,
 ) -> None:
     """Zapisz baseline JPEG z gotowych, skwantyzowanych bloków zigzag.
 
@@ -275,8 +276,8 @@ def _encode_component(
 
 
 def png_to_jpeg(
-    input_path: str | os.PathLike[str],
-    output_path: str | os.PathLike[str],
+    input_path: Union[str, PathLike[str]],
+    output_path: Union[str, PathLike[str]],
     *,
     overwrite: bool = False,
 ) -> None:

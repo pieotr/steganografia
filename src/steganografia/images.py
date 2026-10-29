@@ -1,9 +1,11 @@
 """Odczyt PNG do osadzania i ekstrakcji oraz bezstratny zapis RGB."""
 
 import os
+from os import PathLike
 from pathlib import Path
 import tempfile
 import warnings
+from typing import Union
 
 import numpy as np
 from PIL import Image
@@ -29,7 +31,7 @@ def _check_size(width: int, height: int) -> None:
         )
 
 
-def _read_png(path: str | os.PathLike[str], *, normalize: bool) -> np.ndarray:
+def _read_png(path: Union[str, PathLike[str]], *, normalize: bool) -> np.ndarray:
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -72,7 +74,7 @@ def _read_png(path: str | os.PathLike[str], *, normalize: bool) -> np.ndarray:
         raise ImageError(f"Nie można odczytać obrazu '{path}': {exc}") from exc
 
 
-def load_cover(path: str | os.PathLike[str]) -> np.ndarray:
+def load_cover(path: Union[str, PathLike[str]]) -> np.ndarray:
     """Wczytaj statyczny PNG i znormalizuj do uint8 RGB przed osadzaniem.
 
     Obsługuje 1, L, LA, P, RGB, RGBA o głębi do 8 bitów. Alfa jest
@@ -81,14 +83,14 @@ def load_cover(path: str | os.PathLike[str]) -> np.ndarray:
     return _read_png(path, normalize=True)
 
 
-def load_stego(path: str | os.PathLike[str]) -> np.ndarray:
+def load_stego(path: Union[str, PathLike[str]]) -> np.ndarray:
     """Wczytaj wyłącznie 8-bitowy RGB PNG bez normalizacji przed ekstrakcją."""
     return _read_png(path, normalize=False)
 
 
 def save_png(
     image: np.ndarray,
-    path: str | os.PathLike[str],
+    path: Union[str, PathLike[str]],
     *,
     overwrite: bool = False,
 ) -> None:
