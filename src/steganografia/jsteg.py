@@ -14,9 +14,6 @@ from .frame import HEADER_SIZE, FrameError, parse_header, unpack
 from .images import ImageError, load_cover
 from .jpeg import _encode_component, read_jpeg, write_jpeg
 
-_MF_BIT_REPETITIONS = 3
-
-
 def _jpeg_blocks(image: np.ndarray) -> tuple[int, int, list[np.ndarray], list[np.ndarray], list[np.ndarray]]:
     y, cb, cr = subsample_420(rgb_to_ycbcr(image))
     return (
@@ -51,7 +48,6 @@ def _embed_coefficients(
     first_position: int,
     last_position: int,
     skip_unit_coefficients: bool,
-    repetitions: int = 1,
 ) -> int:
     positions = _jpeg_positions(
         blocks,
@@ -59,7 +55,7 @@ def _embed_coefficients(
         last_position=last_position,
         skip_unit_coefficients=skip_unit_coefficients,
     )
-    capacity = len(positions) // (8 * repetitions)
+    capacity = len(positions) // 8
     if not isinstance(frame, bytes):
         raise TypeError("Ramka musi mieć typ bytes")
     if len(frame) < HEADER_SIZE:
@@ -68,7 +64,7 @@ def _embed_coefficients(
     if len(frame) != header.frame_size:
         raise FrameError(f"Ramka ma {len(frame)} bajtów; oczekiwano {header.frame_size}")
     unpack(frame, capacity_bytes=capacity)
-    bits = np.repeat(_bits(frame), repetitions)
+    bits = _bits(frame)
     for bit, (block_index, position) in zip(bits, positions):
         coefficient = int(blocks[block_index][position])
         if abs(coefficient) % 2 != int(bit):
@@ -85,7 +81,6 @@ def _extract_coefficients(
     first_position: int,
     last_position: int,
     skip_unit_coefficients: bool,
-    repetitions: int = 1,
 ) -> bytes:
     positions = _jpeg_positions(
         blocks,
@@ -93,14 +88,11 @@ def _extract_coefficients(
         last_position=last_position,
         skip_unit_coefficients=skip_unit_coefficients,
     )
-    capacity = len(positions) // (8 * repetitions)
+    capacity = len(positions) // 8
     values = [abs(int(blocks[i][p])) & 1 for i, p in positions]
-    if len(values) < HEADER_SIZE * 8 * repetitions:
+    if len(values) < HEADER_SIZE * 8:
         raise FrameError("JPEG nie mieści nagłówka")
-    if repetitions == 1:
-        decoded = np.asarray(values, dtype=np.uint8)
-    else:
-        decoded = _majority_bits(values[: (len(values) // repetitions) * repetitions])
+    decoded = np.asarray(values, dtype=np.uint8)
     header = parse_header(
         np.packbits(decoded[:HEADER_SIZE * 8], bitorder="big").tobytes(),
         capacity_bytes=capacity,
@@ -114,14 +106,14 @@ def _extract_coefficients(
 def jpeg_capacity_bytes(path: str, *, mf: bool = False) -> int:
     coefficients = read_jpeg(path)
     if mf:
-        return len(_jpeg_positions(coefficients.y_blocks, first_position=5, last_position=40, skip_unit_coefficients=True)) // (8 * _MF_BIT_REPETITIONS)
+        return len(_jpeg_positions(coefficients.y_blocks, first_position=5, last_position=40, skip_unit_coefficients=True)) // 8
     return len(_jpeg_positions(coefficients.y_blocks, first_position=1, last_position=63, skip_unit_coefficients=False)) // 8
 
 
 def png_jpeg_capacity_bytes(image: np.ndarray, *, mf: bool = False) -> int:
     _, _, y_blocks, _, _ = _jpeg_blocks(image)
     if mf:
-        return len(_jpeg_positions(y_blocks, first_position=5, last_position=40, skip_unit_coefficients=True)) // (8 * _MF_BIT_REPETITIONS)
+        return len(_jpeg_positions(y_blocks, first_position=5, last_position=40, skip_unit_coefficients=True)) // 8
     return len(_jpeg_positions(y_blocks, first_position=1, last_position=63, skip_unit_coefficients=False)) // 8
 
 
@@ -138,7 +130,7 @@ def embed_jpeg(
     if mf:
         capacity = _embed_coefficients(
             y_blocks, frame, first_position=5, last_position=40,
-            skip_unit_coefficients=True, repetitions=_MF_BIT_REPETITIONS,
+            skip_unit_coefficients=True,
         )
     else:
         capacity = _embed_coefficients(
@@ -156,7 +148,7 @@ def extract_jpeg(path: str, *, mf: bool = False) -> bytes:
     if mf:
         return _extract_coefficients(
             coefficients.y_blocks, first_position=5, last_position=40,
-            skip_unit_coefficients=True, repetitions=_MF_BIT_REPETITIONS,
+            skip_unit_coefficients=True,
         )
     return _extract_coefficients(
         coefficients.y_blocks, first_position=1, last_position=63,
@@ -166,11 +158,6 @@ def extract_jpeg(path: str, *, mf: bool = False) -> bytes:
 
 def _bits(data: bytes) -> np.ndarray:
     return np.unpackbits(np.frombuffer(data, dtype=np.uint8), bitorder="big")
-
-
-def _majority_bits(values: list[int]) -> np.ndarray:
-    groups = np.asarray(values, dtype=np.uint8).reshape(-1, _MF_BIT_REPETITIONS)
-    return (groups.sum(axis=1) >= 2).astype(np.uint8)
 
 
 __all__ = [
