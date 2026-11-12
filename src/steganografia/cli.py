@@ -9,6 +9,7 @@ import tempfile
 from typing import Optional
 
 from .frame import FrameError, pack, unpack
+from .api import METHOD_REGISTRY
 from .f5 import (
     DEFAULT_KEY as F5_DEFAULT_KEY,
     capacity_from_jpeg as f5_capacity_from_jpeg,
@@ -105,11 +106,9 @@ def _parser() -> argparse.ArgumentParser:
         "--force", "--overwrite", dest="overwrite", action="store_true",
         help="jawnie zezwól na nadpisanie istniejącego pliku",
     )
-    for method, help_text in (
-        ("jsteg", "JSteg"),
-        ("jsteg-mf", "JSteg-MF"),
-        ("f5", "F5"),
-    ):
+    for metadata in METHOD_REGISTRY.metadata():
+        method = metadata["name"]
+        help_text = metadata["label"]
         method_parser = commands.add_parser(
             method,
             help=f"osadzaj lub odczytuj tekst metodą {help_text}",
@@ -133,8 +132,12 @@ def _parser() -> argparse.ArgumentParser:
         method_embed.add_argument(
             "--force", "--overwrite", dest="overwrite", action="store_true"
         )
-        if method == "f5":
-            method_embed.add_argument("--key", default=F5_DEFAULT_KEY, help="opcjonalny klucz F5")
+        for option_name, schema in metadata["options"].items():
+            method_embed.add_argument(
+                f"--{option_name.replace('_', '-')}",
+                default=schema.get("default"),
+                help=f"opcja {option_name} (domyślnie: {schema.get('default')})",
+            )
         method_extract = method_commands.add_parser(
             "extract", help=f"odczytaj tekst metodą {help_text}"
         )
@@ -143,8 +146,12 @@ def _parser() -> argparse.ArgumentParser:
         method_extract.add_argument(
             "--force", "--overwrite", dest="overwrite", action="store_true"
         )
-        if method == "f5":
-            method_extract.add_argument("--key", default=F5_DEFAULT_KEY, help="opcjonalny klucz F5")
+        for option_name, schema in metadata["options"].items():
+            method_extract.add_argument(
+                f"--{option_name.replace('_', '-')}",
+                default=schema.get("default"),
+                help=f"opcja {option_name} (domyślnie: {schema.get('default')})",
+            )
     return parser
 
 
@@ -191,19 +198,63 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
     args.overwrite = bool(getattr(args, "overwrite", False))
     method_command = (
-        getattr(args, "jsteg_command", None)
-        if args.command == "jsteg"
-        else (
-            getattr(args, "jsteg_mf_command", None)
-            if args.command == "jsteg-mf"
-            else getattr(args, "f5_command", None)
-        )
+        getattr(args, f"{args.command.replace('-', '_')}_command", None)
+        if args.command in METHOD_REGISTRY.names()
+        else None
     )
     if args.command in {"jsteg", "jsteg-mf", "f5"} and method_command == "extract" and args.overwrite and args.output is None:
         parser.error("--force wymaga --output wskazującego plik tekstowy")
     if args.command == "extract" and args.overwrite and args.output is None:
         parser.error("--force wymaga --output wskazującego plik tekstowy")
     try:
+        if args.command in METHOD_REGISTRY.names():
+            method = METHOD_REGISTRY.get(args.command)
+            operation = method_command
+            options = {
+                name: getattr(args, name)
+                for name in method.metadata.options
+                if getattr(args, name, None) is not None
+            }
+            if operation == "capacity":
+                stats = method.capacity_bytes(Path(args.input).read_bytes(), **options)
+                total = stats["capacity_bytes"]
+                print(
+                    f"Pojemność {method.metadata.label}: {total} B ramki; "
+                    f"{stats.get('payload_capacity_bytes', max(0, total - 13))} B tekstu UTF-8."
+                )
+                return 0
+            if operation == "extract":
+                text = method.extract_bytes(Path(args.input).read_bytes(), **options)
+                if args.output is not None:
+                    _save_text(text, args.output, overwrite=args.overwrite)
+                else:
+                    sys.stdout.write(text)
+                return 0
+
+            stats = method.capacity_bytes(Path(args.input).read_bytes(), **options)
+            total = stats["capacity_bytes"]
+            payload_limit = stats.get("payload_capacity_bytes", max(0, total - 13))
+            text_file = getattr(args, "text_file", None)
+            text = _read_text(text_file, payload_limit) if text_file else args.text
+            artifact = method.embed_bytes(
+                Path(args.input).read_bytes(), text, **options
+            )
+            target = Path(args.output)
+            allowed_suffixes = (
+                {".jpg", ".jpeg"}
+                if method.metadata.output_format == "jpeg"
+                else {f".{method.metadata.output_format}"}
+            )
+            if target.suffix.lower() not in allowed_suffixes:
+                raise ImageError(
+                    f"Obraz wynikowy musi mieć rozszerzenie .{method.metadata.output_format}"
+                )
+            if target.exists() and not args.overwrite:
+                raise ImageError(f"Plik '{target}' już istnieje; wybierz inną nazwę lub --force")
+            target.write_bytes(artifact.data)
+            print(f"Zapisano {method.metadata.output_format.upper()}: {target}", file=sys.stderr)
+            return 0
+
         if args.command == "f5":
             if method_command == "capacity":
                 image = load_cover(args.input)
