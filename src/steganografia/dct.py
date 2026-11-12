@@ -239,28 +239,10 @@ def dct_block(block: np.ndarray, *, level_shift: bool = True) -> np.ndarray:
     return _DCT_BASIS @ samples @ _DCT_BASIS.T
 
 
-def idct_block(coefficients: np.ndarray, *, level_shift: bool = True) -> np.ndarray:
-    """Oblicz odwrotną DCT-II dla pojedynczego bloku 8x8."""
-    if not isinstance(coefficients, np.ndarray):
-        raise TypeError("coefficients musi być tablicą NumPy")
-    if coefficients.shape != (8, 8):
-        raise ValueError("coefficients musi mieć kształt (8, 8)")
-    if not np.issubdtype(coefficients.dtype, np.number):
-        raise TypeError("coefficients musi zawierać wartości liczbowe")
-    if not isinstance(level_shift, (bool, np.bool_)):
-        raise TypeError("level_shift musi być wartością bool")
-
-    samples = _DCT_BASIS.T @ coefficients @ _DCT_BASIS
-    if level_shift:
-        samples += 128.0
-    return samples
-
-
 __all__ = [
     "CHROMINANCE_QUANTIZATION",
     "LUMINANCE_QUANTIZATION",
     "dct_block",
-    "idct_block",
     "get_block",
     "quantize_block",
     "rgb_to_ycbcr",
