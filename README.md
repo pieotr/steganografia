@@ -29,6 +29,18 @@ steganografia jsteg-mf embed oryginal.png wiadomosc.jpg --text "Tajna wiadomoś�
 steganografia jsteg-mf extract wiadomosc.jpg
 ```
 
+F5 jest dostępny z opcjonalnym kluczem (domyślnie `steganografia-f5`):
+
+```sh
+steganografia f5 capacity oryginal.png
+steganografia f5 embed oryginal.png wiadomosc.jpg --text "Tajna wiadomość" --key moj-klucz
+steganografia f5 extract wiadomosc.jpg --key moj-klucz
+```
+
+F5 wykorzystuje współczynniki AC wszystkich komponentów JPEG (`Y`, `Cb` i
+`Cr`), kodowanie macierzowe `(3, 2)` oraz obsługę shrinkage, gdy modyfikacja
+współczynnika `+1` lub `-1` tworzy zero.
+
 ```sh
 steganografia capacity oryginal.png
 steganografia embed oryginal.png wiadomosc.png --text "Zażółć gęślą jaźń"

@@ -25,7 +25,6 @@ from .dct import (
     LUMINANCE_QUANTIZATION,
     dct_block,
     get_block,
-    idct_block,
     quantize_block,
     rgb_to_ycbcr,
     subsample_420,
@@ -37,6 +36,13 @@ from .jsteg import (
     extract_jpeg as jsteg_extract_jpeg,
     jpeg_capacity_bytes as jsteg_jpeg_capacity_bytes,
     png_jpeg_capacity_bytes as jsteg_png_jpeg_capacity_bytes,
+)
+from .f5 import (
+    DEFAULT_KEY as F5_DEFAULT_KEY,
+    capacity_from_jpeg as f5_capacity_from_jpeg,
+    capacity_from_png as f5_capacity_from_png,
+    embed_jpeg as f5_embed_jpeg,
+    extract_jpeg as f5_extract_jpeg,
 )
 
 __all__ = [
@@ -50,7 +56,6 @@ __all__ = [
     "LUMINANCE_QUANTIZATION",
     "dct_block",
     "get_block",
-    "idct_block",
     "quantize_block",
     "ImageError",
     "capacity_bytes",
@@ -58,6 +63,11 @@ __all__ = [
     "jsteg_extract_jpeg",
     "jsteg_jpeg_capacity_bytes",
     "jsteg_png_jpeg_capacity_bytes",
+    "F5_DEFAULT_KEY",
+    "f5_capacity_from_jpeg",
+    "f5_capacity_from_png",
+    "f5_embed_jpeg",
+    "f5_extract_jpeg",
     "JpegCoefficients",
     "embed_bits",
     "embed_frame",

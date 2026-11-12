@@ -9,6 +9,13 @@ import tempfile
 from typing import Optional
 
 from .frame import FrameError, pack, unpack
+from .f5 import (
+    DEFAULT_KEY as F5_DEFAULT_KEY,
+    capacity_from_jpeg as f5_capacity_from_jpeg,
+    capacity_from_png as f5_capacity_from_png,
+    embed_jpeg as f5_embed_jpeg,
+    extract_jpeg as f5_extract_jpeg,
+)
 from .images import ImageError, load_cover, load_stego, save_png
 from .jpeg import png_to_jpeg
 from .lsb import capacity_bytes, embed_frame, extract_frame, payload_capacity_bytes
@@ -101,6 +108,7 @@ def _parser() -> argparse.ArgumentParser:
     for method, help_text in (
         ("jsteg", "JSteg"),
         ("jsteg-mf", "JSteg-MF"),
+        ("f5", "F5"),
     ):
         method_parser = commands.add_parser(
             method,
@@ -125,6 +133,8 @@ def _parser() -> argparse.ArgumentParser:
         method_embed.add_argument(
             "--force", "--overwrite", dest="overwrite", action="store_true"
         )
+        if method == "f5":
+            method_embed.add_argument("--key", default=F5_DEFAULT_KEY, help="opcjonalny klucz F5")
         method_extract = method_commands.add_parser(
             "extract", help=f"odczytaj tekst metodą {help_text}"
         )
@@ -133,6 +143,8 @@ def _parser() -> argparse.ArgumentParser:
         method_extract.add_argument(
             "--force", "--overwrite", dest="overwrite", action="store_true"
         )
+        if method == "f5":
+            method_extract.add_argument("--key", default=F5_DEFAULT_KEY, help="opcjonalny klucz F5")
     return parser
 
 
@@ -181,14 +193,47 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     method_command = (
         getattr(args, "jsteg_command", None)
         if args.command == "jsteg"
-        else getattr(args, "jsteg_mf_command", None)
+        else (
+            getattr(args, "jsteg_mf_command", None)
+            if args.command == "jsteg-mf"
+            else getattr(args, "f5_command", None)
+        )
     )
-    if args.command in {"jsteg", "jsteg-mf"} and method_command == "extract" and args.overwrite and args.output is None:
+    if args.command in {"jsteg", "jsteg-mf", "f5"} and method_command == "extract" and args.overwrite and args.output is None:
         parser.error("--force wymaga --output wskazującego plik tekstowy")
     if args.command == "extract" and args.overwrite and args.output is None:
         parser.error("--force wymaga --output wskazującego plik tekstowy")
     try:
-        if args.command in {"jsteg", "jsteg-mf"}:
+        if args.command == "f5":
+            if method_command == "capacity":
+                image = load_cover(args.input)
+                total = f5_capacity_from_png(image)
+                if total < 13:
+                    raise FrameError(f"Obraz mieści {total} B; nagłówek wymaga 13 B")
+                print(f"Pojemność F5: {total} B ramki; {total - 13} B tekstu UTF-8 (po odjęciu nagłówka 13 B).")
+                return 0
+            if method_command == "extract":
+                frame = f5_extract_jpeg(args.input, key=args.key)
+                total = f5_capacity_from_jpeg(args.input)
+                text = unpack(frame, capacity_bytes=total)
+                print(f"Pojemność F5: {total} B ramki; {max(0, total - 13)} B tekstu UTF-8 (po odjęciu nagłówka 13 B).", file=sys.stderr)
+                if args.output is not None:
+                    _save_text(text, args.output, overwrite=args.overwrite)
+                else:
+                    sys.stdout.write(text)
+                return 0
+            image = load_cover(args.input)
+            total = f5_capacity_from_png(image)
+            if Path(args.output).suffix.lower() not in {".jpg", ".jpeg"}:
+                raise ImageError("Obraz wynikowy musi mieć rozszerzenie .jpg lub .jpeg")
+            if total < 13:
+                raise FrameError(f"Obraz mieści {total} B; nagłówek wymaga 13 B")
+            print(f"Pojemność F5: {total} B ramki; {total - 13} B tekstu UTF-8 (po odjęciu nagłówka 13 B).", file=sys.stderr)
+            text = _read_text(args.text_file, total - 13) if args.text_file is not None else args.text
+            frame = pack(text, capacity_bytes=total)
+            f5_embed_jpeg(args.input, args.output, frame, key=args.key, overwrite=args.overwrite)
+            print(f"Zapisano JPEG: {args.output}", file=sys.stderr)
+        elif args.command in {"jsteg", "jsteg-mf"}:
             is_mf = args.command == "jsteg-mf"
             label = "JSteg-MF" if is_mf else "JSteg"
             if method_command == "capacity":
