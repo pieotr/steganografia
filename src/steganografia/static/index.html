@@ -3,12 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Steganography — hide and reveal messages in images, audio, video, and text." />
+    <meta name="description" content="Hide and reveal text in images with LSB and DCT steganography." />
     <title>Steganography</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=02a338b" />
     <link rel="shortcut icon" href="/favicon.ico?v=02a338b" />
     <link rel="apple-touch-icon" href="/icon.png?v=02a338b" />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=inspect1" />
+    <link rel="stylesheet" href="/inspector.css?v=inspect6" />
   </head>
   <body>
     <div class="ambient ambient-one"></div>
@@ -17,10 +18,9 @@
     <main class="app-shell">
       <header class="brand-bar">
         <div>
-          <p class="eyebrow">Project 06 · LSB / DCT</p>
           <h1>Steganography</h1>
         </div>
-        <div class="online-pill"><span></span>Online</div>
+
       </header>
 
       <section class="workspace" id="workspace" data-mode="crypt" data-state="idle">
@@ -31,48 +31,6 @@
             <p id="panelDescription">Choose an image and give it a secret message.</p>
           </div>
 
-          <div class="media-selector field-block">
-            <div class="field-label-row">
-              <label for="mediaSelectButton">Carrier media</label>
-              <span>Select the kind of file to process</span>
-            </div>
-            <select id="mediaType" class="native-media-select" aria-hidden="true" tabindex="-1">
-              <option value="image">Images</option>
-              <option value="audio">Audio</option>
-              <option value="video">Video</option>
-              <option value="text">Text</option>
-            </select>
-            <div class="media-select" id="mediaSelect">
-              <button class="media-select-button" id="mediaSelectButton" type="button" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="mediaSelectList">
-                <span id="mediaSelectValue">Images</span>
-                <svg class="media-select-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5"/></svg>
-              </button>
-              <div class="media-select-list" id="mediaSelectList" role="listbox" aria-label="Carrier media type" hidden>
-                <button class="media-select-option" id="media-option-image" type="button" role="option" aria-selected="true" data-media-option="image">
-                  <span class="media-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m7 16 3.2-3.2 2.2 2.2 1.8-1.8L17 16"/></svg></span>
-                  <span>Images</span>
-                  <svg class="media-option-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>
-                </button>
-                <!--
-                <button class="media-select-option" id="media-option-audio" type="button" role="option" aria-selected="false" data-media-option="audio">
-                  <span class="media-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></span>
-                  <span>Audio</span>
-                  <svg class="media-option-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>
-                </button>
-                <button class="media-select-option" id="media-option-video" type="button" role="option" aria-selected="false" data-media-option="video">
-                  <span class="media-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></span>
-                  <span>Video</span>
-                  <svg class="media-option-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>
-                </button>
-                <button class="media-select-option" id="media-option-text" type="button" role="option" aria-selected="false" data-media-option="text">
-                  <span class="media-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12M12 4v16M8 20h8"/></svg></span>
-                  <span>Text</span>
-                  <svg class="media-option-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>
-                </button>
-                -->
-              </div>
-            </div>
-          </div>
 
           <div class="mode-switch" role="tablist" aria-label="Processing mode">
             <button class="mode-button active" id="cryptTab" type="button" role="tab" aria-selected="true" data-mode="crypt">
@@ -86,13 +44,36 @@
           </div>
 
           <form id="stegForm" novalidate>
+            <div class="field-block method-field">
+              <div class="field-label-row">
+                <label for="methodSelect">Method</label>
+                <span id="methodFormat">PNG → PNG</span>
+              </div>
+              <select id="methodSelect" aria-describedby="methodNotice">
+                <option value="lsb">LSB</option>
+                <optgroup label="DCT">
+                  <option value="jsteg">JSteg</option>
+                  <option value="jsteg-mf">JSteg-MF — API unavailable</option>
+                  <option value="f5">F5 — API unavailable</option>
+                </optgroup>
+              </select>
+              <p class="method-notice" id="methodNotice" role="status" hidden></p>
+            </div>
+            <div class="field-block" id="keyField" hidden>
+              <div class="field-label-row">
+                <label for="f5Key">F5 key</label>
+                <span>Optional</span>
+              </div>
+              <input type="password" id="f5Key" autocomplete="off" spellcheck="false" aria-describedby="keyHint" placeholder="Enter the F5 key" />
+              <p class="field-hint" id="keyHint">Use the same key to hide and reveal. Empty uses the algorithm’s default key.</p>
+            </div>
             <div class="field-block">
               <div class="field-label-row">
                 <label for="fileInput" id="fileLabel">Carrier file</label>
-                <span id="fileStatus">PNG or JPG · Up to 10 MB</span>
+                <span id="fileStatus">PNG · Up to 10 MB</span>
               </div>
 
-              <input id="fileInput" type="file" accept="image/png,image/jpeg" hidden />
+              <input id="fileInput" type="file" accept="image/png,.png" hidden />
               <button class="dropzone" id="dropzone" type="button">
                 <span class="upload-icon" aria-hidden="true">
                   <svg data-upload-icon="image" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m7 16 3.2-3.2 2.2 2.2 1.8-1.8L17 16"/></svg>
@@ -131,7 +112,7 @@
                 <label for="secretMessage">Text to hide</label>
                 <span><b id="characterCount">0</b> characters</span>
               </div>
-              <textarea id="secretMessage" maxlength="2000" rows="4" placeholder="Write the message you’d like to hide..."></textarea>
+              <textarea id="secretMessage" rows="4" placeholder="Write the message you’d like to hide..."></textarea>
             </div>
 
             <div class="extracted-block" id="extractedBlock" hidden>
@@ -177,12 +158,64 @@
               Download
             </button>
           </div>
+          <button class="inspect-toggle" id="inspectButton" type="button" aria-expanded="false" aria-controls="changeInspector" hidden>Inspect changes</button>
         </article>
       </section>
 
-      <footer>Private processing · No files are stored permanently</footer>
+      <section class="change-inspector" id="changeInspector" aria-labelledby="inspectorTitle" hidden>
+        <div class="inspector-heading">
+          <div><h2 id="inspectorTitle">See what changed</h2><p>Compare the original image with the actual downloaded result.</p></div>
+          <button id="closeInspector" class="inspector-secondary" type="button">Close</button>
+        </div>
+        <p class="inspector-status" id="inspectorStatus" role="status" hidden></p>
+        <div id="inspectorContent" hidden>
+
+          <dl class="inspection-stats">
+            <div><dt>Message · UTF-8</dt><dd id="inspectMessageBytes">—</dd></div>
+            <div><dt>Changed pixels · RGB</dt><dd id="inspectChangedPixels">—</dd></div>
+            <div><dt>Flipped bits · decoded RGB</dt><dd id="inspectFlippedBits">—</dd></div>
+            <div><dt>File size · before → after</dt><dd id="inspectFileSizes">—</dd></div>
+          </dl>
+          <div class="inspection-views" role="group" aria-label="Inspection view">
+            <button id="compareViewButton" class="inspector-secondary" type="button" aria-pressed="true">Before / after</button>
+            <button id="heatmapViewButton" class="inspector-secondary" type="button" aria-pressed="false">Change map &amp; bits</button>
+          </div>
+          <div id="compareView">
+            <div class="comparison-frame" id="comparisonFrame">
+              <div class="compare-stage" id="compareStage">
+                <img id="inspectBefore" alt="Original carrier image" draggable="false" />
+                <img id="inspectAfter" alt="Encoded image, revealed by the comparison slider" draggable="false" />
+                <span class="compare-divider" aria-hidden="true"></span>
+              </div>
+              <div class="inspector-label-row"><label for="comparePosition">Compare</label><output id="compareValue" for="comparePosition">50%</output></div>
+              <input id="comparePosition" type="range" min="0" max="100" value="50" />
+            </div>
+          </div>
+          <div id="heatmapView" hidden>
+            <p class="inspector-help">Cyan highlights changed RGB pixels. Click the map to inspect their bits, or focus it and use the arrow keys.</p>
+            <div class="heatmap-stage"><canvas id="changeMap" tabindex="0" aria-label="RGB change map. Click to select a pixel, or use the arrow keys when focused to inspect adjacent pixels."></canvas></div>
+            <div class="inspector-label-row"><label for="differenceGain">Difference amplification</label><output id="gainValue" for="differenceGain">64×</output></div>
+            <input id="differenceGain" type="range" min="1" max="255" value="64" />
+            <div class="pixel-picker">
+              <div class="pixel-picker-heading"><h3>Inspect a pixel</h3></div>
+              <div class="coordinate-fields">
+                <label class="coordinate-input"><span>X</span><input id="pixelX" type="number" inputmode="numeric" min="0" value="0" step="1" autocomplete="off" aria-describedby="pixelLimits coordinateError" /></label>
+                <label class="coordinate-input"><span>Y</span><input id="pixelY" type="number" inputmode="numeric" min="0" value="0" step="1" autocomplete="off" aria-describedby="pixelLimits coordinateError" /></label>
+              </div>
+              <p class="coordinate-hint" id="pixelLimits"></p>
+              <p class="coordinate-error" id="coordinateError" role="status" hidden></p>
+            </div>
+            <div class="bit-table-wrap"><table class="bit-table"><caption>RGB channel values · highlighted bits differ</caption><thead><tr><th scope="col">Channel</th><th scope="col">Before</th><th scope="col">After</th><th scope="col">Binary before → after</th></tr></thead><tbody id="pixelBitRows"></tbody></table></div>
+
+          </div>
+        </div>
+
+      </section>
+
+
     </main>
 
-    <script src="/app.js"></script>
+    <script src="/inspector.js?v=inspect6"></script>
+    <script src="/studio.js?v=inspect1"></script>
   </body>
 </html>
