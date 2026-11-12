@@ -1,10 +1,13 @@
-"""Flask API dla steganografii z przygotowaniem pod rozszerzenia DCT.
+"""Flask API dla steganografii metodami LSB i DCT.
 
 Dostępne endpointy:
 - /api/v1/health
 - /api/v1/lsb/capacity
 - /api/v1/lsb/embed
 - /api/v1/lsb/extract
+- /api/v1/dct/capacity
+- /api/v1/dct/embed
+- /api/v1/dct/extract
 - /api/v1/openapi.json
 - /api/v1/swagger
 """
@@ -12,6 +15,7 @@ Dostępne endpointy:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 from pathlib import Path
@@ -20,7 +24,13 @@ from typing import Optional, Sequence, Union
 from flask import Flask, jsonify, request, send_from_directory
 from werkzeug.exceptions import BadRequest
 
-from .api import METHOD_REGISTRY, image_to_base64, load_png_from_bytes, read_png_bytes
+from .api import (
+    METHOD_REGISTRY,
+    image_to_base64,
+    load_png_from_bytes,
+    read_jpeg_bytes,
+    read_png_bytes,
+)
 
 
 def _resolve_frontend_dir() -> Path:
@@ -49,7 +59,7 @@ OPENAPI_SPEC = {
         "version": "1.0.0",
         "description": (
             "API do ukrywania i odczytu danych w obrazach PNG z użyciem "
-            "metody LSB. Architektura jest przygotowana pod rozszerzenia o DCT."
+            "metod LSB i DCT. DCT zwraca wynik w formacie JPEG."
         ),
     },
     "servers": [{"url": "/api/v1", "description": "Wewnętrzny serwer API"}],
@@ -119,6 +129,67 @@ OPENAPI_SPEC = {
                     },
                 },
                 "responses": {"200": {"description": "Tekst odzyskany z obrazu"}},
+            }
+        },
+        "/dct/capacity": {
+            "post": {
+                "summary": "Pojemność obrazu dla DCT",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {"type": "string", "format": "binary"},
+                                },
+                                "required": ["file"],
+                            }
+                        }
+                    },
+                },
+                "responses": {"200": {"description": "Prawidłowa odpowiedź"}},
+            }
+        },
+        "/dct/embed": {
+            "post": {
+                "summary": "Osadź tekst w obrazie metodą DCT",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {"type": "string", "format": "binary"},
+                                    "text": {"type": "string", "description": "Tekst UTF-8 do ukrycia"},
+                                },
+                                "required": ["file", "text"],
+                            }
+                        }
+                    },
+                },
+                "responses": {"200": {"description": "Obraz JPEG z ukrytym tekstem"}},
+            }
+        },
+        "/dct/extract": {
+            "post": {
+                "summary": "Odczytaj tekst z obrazu DCT",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {"type": "string", "format": "binary"},
+                                },
+                                "required": ["file"],
+                            }
+                        }
+                    },
+                },
+                "responses": {"200": {"description": "Tekst odzyskany z obrazu JPEG"}},
             }
         },
     },
@@ -251,6 +322,50 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
         return jsonify({
             "success": True,
             "method": "lsb",
+            "text": text,
+            "length_chars": len(text),
+            "encoding": "utf-8",
+        })
+
+    @app.post("/api/v1/dct/capacity")
+    def dct_capacity():
+        uploaded_file = request.files.get("file")
+        cover = read_png_bytes(uploaded_file)
+        method = _resolve_method("dct")
+        stats = method.capacity_bytes(cover)
+        return jsonify({
+            "method": "dct",
+            "format": "PNG",
+            "output_format": "JPEG",
+            "capacity_bytes": stats["capacity_bytes"],
+            "payload_capacity_bytes": stats["payload_capacity_bytes"],
+        })
+
+    @app.post("/api/v1/dct/embed")
+    def dct_embed():
+        uploaded_file = request.files.get("file")
+        text = request.form.get("text")
+        if text is None:
+            raise BadRequest("Brakuje pola 'text'.")
+
+        cover = read_png_bytes(uploaded_file)
+        encoded = _resolve_method("dct").embed_bytes(cover, text)
+        return jsonify({
+            "success": True,
+            "method": "dct",
+            "format": "JPEG",
+            "image_base64": base64.b64encode(encoded.data).decode("ascii"),
+            "payload_length_chars": len(text),
+        })
+
+    @app.post("/api/v1/dct/extract")
+    def dct_extract():
+        uploaded_file = request.files.get("file")
+        encoded = read_jpeg_bytes(uploaded_file)
+        text = _resolve_method("dct").extract_bytes(encoded)
+        return jsonify({
+            "success": True,
+            "method": "dct",
             "text": text,
             "length_chars": len(text),
             "encoding": "utf-8",

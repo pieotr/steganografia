@@ -169,6 +169,15 @@ class JStegMethod(_JpegMethod):
     )
 
 
+class DCTMethod(JStegMethod):
+    """Metoda DCT osadzająca dane w niezerowych współczynnikach AC luminancji."""
+
+    name = "dct"
+    metadata = MethodMetadata(
+        name="dct", label="DCT", input_formats=("png",), output_format="jpeg", options={}
+    )
+
+
 class JStegMFMethod(_JpegMethod):
     name = "jsteg-mf"
     mf = True
@@ -247,6 +256,7 @@ class SteganographyRegistry:
 
 METHOD_REGISTRY = SteganographyRegistry()
 METHOD_REGISTRY.register(LSBMethod())
+METHOD_REGISTRY.register(DCTMethod())
 METHOD_REGISTRY.register(JStegMethod())
 METHOD_REGISTRY.register(JStegMFMethod())
 METHOD_REGISTRY.register(F5Method())
@@ -298,6 +308,24 @@ def read_png_bytes(file_storage: Any) -> bytes:
     return payload
 
 
+def read_jpeg_bytes(file_storage: Any) -> bytes:
+    """Wczytaj bajty pliku JPEG z żądania multipart."""
+    if file_storage is None:
+        raise ValueError("Brakuje pliku 'file'.")
+    file_storage.seek(0)
+    payload = file_storage.read()
+    if not payload:
+        raise ValueError("Przesłany plik jest pusty.")
+    try:
+        with Image.open(io.BytesIO(payload)) as image:
+            if image.format not in {"JPEG", "JPG"}:
+                raise ValueError("Obsługiwany jest tylko format JPEG.")
+            image.verify()
+    except Exception as exc:  # pragma: no cover - obsługa błędu wejścia
+        raise ValueError("Nie można odczytać pliku JPEG.") from exc
+    return payload
+
+
 def load_png_from_bytes(payload: bytes, *, mode: str = "cover") -> np.ndarray:
     """Wczytaj PNG z bajtów do tablicy NumPy. Tryb cover/extract ma znaczenie."""
     if mode not in {"cover", "stego"}:
@@ -342,6 +370,7 @@ def image_to_base64(image: np.ndarray) -> str:
 
 __all__ = [
     "LSBMethod",
+    "DCTMethod",
     "JStegMethod",
     "JStegMFMethod",
     "F5Method",
@@ -354,5 +383,6 @@ __all__ = [
     "image_to_base64",
     "load_png_from_bytes",
     "read_png_bytes",
+    "read_jpeg_bytes",
     "save_png_to_bytes",
 ]

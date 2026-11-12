@@ -1,6 +1,6 @@
 # API Flask dla steganografii
 
-Serwer Flask jest przygotowany do pracy z frontendem i ma prostą, rozszerzalną architekturę metod steganograficznych. Obecnie wspiera tylko LSB, ale warstwa `SteganographyMethod` i rejestr metod są zaprojektowane tak, aby w przyszłości dodać DCT bez zmiany kontraktu HTTP.
+Serwer Flask jest przygotowany do pracy z frontendem i obsługuje metody LSB oraz DCT. DCT wykonuje osadzanie w niezerowych, skwantyzowanych współczynnikach AC luminancji i zwraca wynikowy obraz JPEG.
 
 ## Uruchomienie
 
@@ -28,7 +28,7 @@ Przykład odpowiedzi:
 {
   "status": "ok",
   "service": "steganografia",
-  "methods": ["lsb"]
+  "methods": ["dct", "f5", "jsteg", "jsteg-mf", "lsb"]
 }
 ```
 
@@ -118,6 +118,38 @@ Przykład odpowiedzi:
 }
 ```
 
+### POST /api/v1/dct/capacity
+
+Wczytuje obraz PNG i zwraca pojemność dla metody DCT. Pojemność obejmuje 13-bajtowy nagłówek ramki.
+
+```sh
+curl -X POST http://localhost:5000/api/v1/dct/capacity \
+  -F "file=@oryginal.png"
+```
+
+Odpowiedź zawiera `capacity_bytes`, `payload_capacity_bytes`, `format: "PNG"` oraz `output_format: "JPEG"`.
+
+### POST /api/v1/dct/embed
+
+Osadza tekst UTF-8 w obrazie PNG metodą DCT. Wynik jest obrazem JPEG zakodowanym w `image_base64`.
+
+```sh
+curl -X POST http://localhost:5000/api/v1/dct/embed \
+  -F "file=@oryginal.png" \
+  -F "text=Cześć metodą DCT!"
+```
+
+### POST /api/v1/dct/extract
+
+Odczytuje tekst z wynikowego obrazu JPEG.
+
+```sh
+curl -X POST http://localhost:5000/api/v1/dct/extract \
+  -F "file=@stego.jpg"
+```
+
+Odpowiedź ma taki sam format jak dla LSB: `text`, `length_chars` i `encoding`.
+
 ## Architektura rozszerzalna
 
 Warstwa `steganografia.api` wykorzystuje wzorzec metody steganograficznej:
@@ -126,11 +158,11 @@ Warstwa `steganografia.api` wykorzystuje wzorzec metody steganograficznej:
 - `SteganographyRegistry` — rejestr metod,
 - `METHOD_REGISTRY` — globalna lista dostępnych algorytmów.
 
-Dla DCT wystarczy dodać nową klasę implementującą `embed`, `extract` i `capacity`, zarejestrować ją w `METHOD_REGISTRY`, a endpointy HTTP pozostaną bez zmian (np. `/api/v1/dct/embed`, `/api/v1/dct/extract`).
+DCT jest zarejestrowane w `METHOD_REGISTRY` jako metoda `dct`; endpointy używają kontraktu bajtowego `capacity_bytes`, `embed_bytes` i `extract_bytes`.
 
 ## Uwagi integracyjne
 
-- Serwer akceptuje wyłącznie PNG jako wejście i wyjście.
+- LSB przyjmuje i zwraca PNG. DCT przyjmuje PNG podczas osadzania, a zwraca i odczytuje JPEG.
 - Żądania są form-data, więc frontend może wysyłać plik bezpośrednio z formularza.
 - Odpowiedzi API są w formacie JSON, z wyjątkiem wygenerowanego obrazu, który jest zwracany jako `image_base64`.
-- Dla przyszłych metod DCT warto zachować ten sam kontrakt `capacity/embed/extract` i nazewnictwo endpointów według metody (`lsb`, `dct`).
+- Endpointy są nazwane według metody (`lsb`, `dct`), a DCT korzysta z 13-bajtowej ramki STEG v1.

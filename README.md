@@ -74,7 +74,7 @@ Kod zakończenia: `0` — sukces, `1` — błąd danych lub pliku,
 ## API Flask
 
 Dla frontendowca w projekcie jest dostępny też serwer Flask z endpointami dla
-LSB i z architekturą przygotowaną pod rozszerzenia o DCT.
+LSB i DCT.
 
 Uruchomienie:
 
@@ -100,7 +100,10 @@ Najważniejsze endpointy:
 - `GET /api/v1/health` — status serwera,
 - `POST /api/v1/lsb/capacity` — pojemność obrazu PNG,
 - `POST /api/v1/lsb/embed` — osadzenie tekstu w PNG,
-- `POST /api/v1/lsb/extract` — odczyt tekstu z PNG.
+- `POST /api/v1/lsb/extract` — odczyt tekstu z PNG,
+- `POST /api/v1/dct/capacity` — pojemność PNG dla DCT,
+- `POST /api/v1/dct/embed` — osadzenie tekstu w PNG i wynikowy JPEG,
+- `POST /api/v1/dct/extract` — odczyt tekstu z JPEG.
 
 Przykład `curl`:
 
