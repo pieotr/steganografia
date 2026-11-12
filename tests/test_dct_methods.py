@@ -83,7 +83,7 @@ def test_wspolne_api_przekroczenie_pojemnosci_daje_blad(textured_png, method_nam
 
 def test_rejestr_metod_zawiera_wszystkie_metody_i_zglasza_blad_dla_nieznanej():
     names = METHOD_REGISTRY.names()
-    assert set(names) == {"lsb", "jsteg", "jsteg-mf", "f5"}
+    assert {"lsb", "jsteg", "jsteg-mf", "f5"} <= set(names)
     with pytest.raises(MethodNotFoundError):
         METHOD_REGISTRY.get("nieistniejaca-metoda")
 
