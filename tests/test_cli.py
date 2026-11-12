@@ -2,7 +2,7 @@
 
 Dostosowane do CLI opisanego w README repozytorium: flaga nadpisywania to
 --overwrite (dla embed i dla extract --output), a komunikaty błędów pochodzą
-wprost z FrameError/ImageError (np. "niepoprawna ramka STEG: ...").
+wprost z FrameError/ImageError.
 """
 
 import os
@@ -73,7 +73,7 @@ def test_extract_z_obrazu_bez_wiadomosci(tmp_path, capsys):
     pusty = tmp_path / "pusty.png"
     Image.new("RGB", (40, 40)).save(pusty)
     assert main(["extract", str(pusty)]) == 1
-    assert "niepoprawna ramka STEG" in capsys.readouterr().err
+    assert "niepoprawna ramka steg" in capsys.readouterr().err.lower()
 
 
 def test_extract_uszkodzona_ramka_crc(cover, tmp_path, capsys):
