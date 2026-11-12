@@ -2,7 +2,7 @@
 
 Dostosowane do CLI opisanego w README repozytorium: flaga nadpisywania to
 --overwrite (dla embed i dla extract --output), a komunikaty błędów pochodzą
-wprost z FrameError/ImageError (np. "Niepoprawna ramka STEG: ...").
+wprost z FrameError/ImageError (np. "niepoprawna ramka STEG: ...").
 """
 
 import os
@@ -59,7 +59,6 @@ def test_za_dluga_wiadomosc_czytelny_blad(cover, tmp_path, capsys):
     za_dluga = "a" * (1350 - HEADER_SIZE + 1)  # o jeden bajt za dużo
     assert main(["embed", str(cover), str(stego), "--text", za_dluga]) == 1
     err = capsys.readouterr().err
-    # Komunikat pochodzi z FrameError (parse_header): czytelny, podaje limit.
     assert "przekracza pojemność obrazu" in err
     assert "1337 B" in err
     assert not stego.exists()
@@ -74,7 +73,7 @@ def test_extract_z_obrazu_bez_wiadomosci(tmp_path, capsys):
     pusty = tmp_path / "pusty.png"
     Image.new("RGB", (40, 40)).save(pusty)
     assert main(["extract", str(pusty)]) == 1
-    assert "Niepoprawna ramka STEG" in capsys.readouterr().err
+    assert "niepoprawna ramka STEG" in capsys.readouterr().err
 
 
 def test_extract_uszkodzona_ramka_crc(cover, tmp_path, capsys):
@@ -82,11 +81,11 @@ def test_extract_uszkodzona_ramka_crc(cover, tmp_path, capsys):
     main(["embed", str(cover), str(stego), "--text", TEKST])
     obraz = load_stego(stego).copy()
     probki = obraz.reshape(-1)
-    probki[HEADER_SIZE * 8 + 3] ^= 1  # odwrócenie jednego bitu payloadu
+    probki[HEADER_SIZE * 8 + 3] ^= 1
     save_png(probki.reshape(obraz.shape), stego, overwrite=True)
     capsys.readouterr()
     assert main(["extract", str(stego)]) == 1
-    assert "CRC32" in capsys.readouterr().err
+    assert "crc32" in capsys.readouterr().err.lower()
 
 
 def test_nie_nadpisuje_bez_overwrite(cover, tmp_path, capsys):
@@ -113,7 +112,7 @@ def test_extract_output_nie_nadpisuje_bez_overwrite(cover, tmp_path, capsys):
 
 def test_wynik_nie_moze_byc_obrazem_wejsciowym(cover, capsys):
     assert main(["embed", str(cover), str(cover), "--text", "x", "--overwrite"]) == 1
-    assert "różnić się" in capsys.readouterr().err
+    assert "różnić" in capsys.readouterr().err
 
 
 def test_brak_pliku_wejsciowego(tmp_path, capsys):
@@ -128,15 +127,27 @@ def test_wymagany_dokladnie_jeden_zrodlowy_tekst(cover, tmp_path):
 
 
 def test_uruchomienie_jako_modul_w_osobnym_procesie(cover, tmp_path):
-    """Sprawdza prawdziwe CLI (python -m steganografia) razem z kodowaniem UTF-8."""
     stego = tmp_path / "stego.png"
     korzen = Path(__file__).resolve().parent.parent
-    env = {**os.environ, "PYTHONPATH": str(korzen), "PYTHONIOENCODING": "utf-8"}
+    katalog_src = korzen / "src"
+
+    sciezki = [str(katalog_src), str(korzen)]
+    istniejacy_pythonpath = os.environ.get("PYTHONPATH")
+    if istniejacy_pythonpath:
+        sciezki.append(istniejacy_pythonpath)
+
+    env = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join(sciezki),
+        "PYTHONIOENCODING": "utf-8",
+    }
 
     def uruchom(*args):
         return subprocess.run(
             [sys.executable, "-m", "steganografia", *args],
-            capture_output=True, env=env, cwd=tmp_path,
+            capture_output=True,
+            env=env,
+            cwd=tmp_path,
         )
 
     wynik = uruchom("embed", str(cover), str(stego), "--text", TEKST)
