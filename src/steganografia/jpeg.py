@@ -8,6 +8,7 @@ from pathlib import Path
 import struct
 import tempfile
 from typing import Iterable, Optional, Sequence, Union
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -275,6 +276,202 @@ def _encode_component(
     return blocks
 
 
+@dataclass(frozen=True)
+class JpegCoefficients:
+    """Baseline JPEG metadane i skwantyzowane bloki w kolejności raster-scan."""
+
+    width: int
+    height: int
+    y_blocks: list[np.ndarray]
+    cb_blocks: list[np.ndarray]
+    cr_blocks: list[np.ndarray]
+
+
+class _BitReader:
+    def __init__(self, data: bytes) -> None:
+        self.data = data
+        self.position = 0
+
+    def read(self, count: int) -> int:
+        value = 0
+        for _ in range(count):
+            if self.position >= len(self.data) * 8:
+                raise ImageError("Ucięty strumień entropii JPEG")
+            value = (value << 1) | ((self.data[self.position // 8] >> (7 - self.position % 8)) & 1)
+            self.position += 1
+        return value
+
+
+def _entropy_bytes(data: bytes, start: int) -> bytes:
+    result = bytearray()
+    position = start
+    while position < len(data):
+        if data[position] != 0xFF:
+            result.append(data[position])
+            position += 1
+            continue
+        if position + 1 >= len(data):
+            break
+        marker = data[position + 1]
+        if marker == 0:
+            result.append(0xFF)
+            position += 2
+        else:
+            return bytes(result)
+    return bytes(result)
+
+
+def _huffman_decoder(bits: Sequence[int], values: Sequence[int]) -> dict[tuple[int, int], int]:
+    result = {}
+    code = 0
+    offset = 0
+    for length, count in enumerate(bits, 1):
+        for _ in range(count):
+            result[(length, code)] = values[offset]
+            offset += 1
+            code += 1
+        code <<= 1
+    return result
+
+
+def _read_huffman(reader: _BitReader, table: dict[tuple[int, int], int]) -> int:
+    code = 0
+    for length in range(1, 17):
+        code = (code << 1) | reader.read(1)
+        if (length, code) in table:
+            return table[(length, code)]
+    raise ImageError("Niepoprawny kod Huffmana JPEG")
+
+
+def _receive(reader: _BitReader, size: int) -> int:
+    if size == 0:
+        return 0
+    value = reader.read(size)
+    if value < (1 << (size - 1)):
+        value -= (1 << size) - 1
+    return value
+
+
+def _decode_block(
+    reader: _BitReader,
+    previous_dc: int,
+    dc_table: dict[tuple[int, int], int],
+    ac_table: dict[tuple[int, int], int],
+) -> tuple[np.ndarray, int]:
+    block = np.zeros(64, dtype=np.int32)
+    dc_size = _read_huffman(reader, dc_table)
+    dc = previous_dc + _receive(reader, dc_size)
+    block[0] = dc
+    position = 1
+    while position < 64:
+        symbol = _read_huffman(reader, ac_table)
+        if symbol == 0:
+            break
+        if symbol == 0xF0:
+            position += 16
+            continue
+        run, size = symbol >> 4, symbol & 0x0F
+        position += run
+        if position >= 64 or size == 0:
+            raise ImageError("Niepoprawny blok AC JPEG")
+        block[position] = _receive(reader, size)
+        position += 1
+    return block, dc
+
+
+def read_jpeg(path: Union[str, PathLike[str]]) -> JpegCoefficients:
+    """Odczytaj skwantyzowane bloki baseline JPEG bez dekodowania do RGB."""
+    data = Path(path).read_bytes()
+    if data[:2] != b"\xff\xd8":
+        raise ImageError("Niepoprawny nagłówek JPEG")
+    quantization: dict[int, np.ndarray] = {}
+    huffman: dict[int, dict[tuple[int, int], int]] = {}
+    position = 2
+    width = height = 0
+    components = {}
+    scan_start = None
+    while position < len(data):
+        if data[position] != 0xFF:
+            position += 1
+            continue
+        while position < len(data) and data[position] == 0xFF:
+            position += 1
+        marker = data[position]
+        position += 1
+        if marker == 0xD9:
+            break
+        if marker == 0xDA:
+            length = struct.unpack_from(">H", data, position)[0]
+            scan = data[position + 2:position + length]
+            position += length
+            scan_start = position
+            break
+        length = struct.unpack_from(">H", data, position)[0]
+        payload = data[position + 2:position + length]
+        position += length
+        if marker == 0xDB:
+            offset = 0
+            while offset < len(payload):
+                info = payload[offset]
+                offset += 1
+                if info >> 4:
+                    raise ImageError("8-bit JPEG wymaga prostych tabel kwantyzacji")
+                quantization[info & 0x0F] = np.frombuffer(
+                    payload[offset:offset + 64], dtype=np.uint8
+                ).astype(np.float64)
+                offset += 64
+        elif marker == 0xC0:
+            height, width, count = struct.unpack_from(">HHB", payload, 1)
+            offset = 6
+            for _ in range(count):
+                identifier, sampling, table = struct.unpack_from(">BBB", payload, offset)
+                components[identifier] = (sampling >> 4, sampling & 0x0F, table)
+                offset += 3
+        elif marker == 0xC4:
+            offset = 0
+            while offset < len(payload):
+                identifier = payload[offset]
+                offset += 1
+                bits = tuple(payload[offset:offset + 16])
+                offset += 16
+                count = sum(bits)
+                values = tuple(payload[offset:offset + count])
+                offset += count
+                huffman[identifier] = _huffman_decoder(bits, values)
+    if scan_start is None or width < 1 or height < 1 or set(components) != {1, 2, 3}:
+        raise ImageError("Nieobsługiwany lub niepełny baseline JPEG")
+    entropy = _entropy_bytes(data, scan_start)
+    reader = _BitReader(entropy)
+    y_h, y_v, y_q = components[1]
+    cb_h, cb_v, cb_q = components[2]
+    cr_h, cr_v, cr_q = components[3]
+    if (y_h, y_v, cb_h, cb_v, cr_h, cr_v) != (2, 2, 1, 1, 1, 1):
+        raise ImageError("JPEG musi używać próbkowania 4:2:0")
+    mcu_x = (width + 15) // 16
+    mcu_y = (height + 15) // 16
+    y_grid = [[None for _ in range(mcu_x * 2)] for _ in range(mcu_y * 2)]
+    cb_blocks = []
+    cr_blocks = []
+    previous = {1: 0, 2: 0, 3: 0}
+    tables = {
+        1: (huffman[0], huffman[0x10]),
+        2: (huffman[1], huffman[0x11]),
+        3: (huffman[1], huffman[0x11]),
+    }
+    for mcu_row in range(mcu_y):
+        for mcu_column in range(mcu_x):
+            for row_offset in range(2):
+                for column_offset in range(2):
+                    block, previous[1] = _decode_block(reader, previous[1], *tables[1])
+                    y_grid[mcu_row * 2 + row_offset][mcu_column * 2 + column_offset] = block
+            block, previous[2] = _decode_block(reader, previous[2], *tables[2])
+            cb_blocks.append(block)
+            block, previous[3] = _decode_block(reader, previous[3], *tables[3])
+            cr_blocks.append(block)
+    y_blocks = [block for row in y_grid for block in row]
+    return JpegCoefficients(width, height, y_blocks, cb_blocks, cr_blocks)
+
+
 def png_to_jpeg(
     input_path: Union[str, PathLike[str]],
     output_path: Union[str, PathLike[str]],
@@ -325,4 +522,4 @@ def png_to_jpeg(
             temporary.unlink(missing_ok=True)
 
 
-__all__ = ["png_to_jpeg", "write_jpeg"]
+__all__ = ["JpegCoefficients", "png_to_jpeg", "read_jpeg", "write_jpeg"]

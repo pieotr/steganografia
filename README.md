@@ -6,6 +6,29 @@ Po instalacji `python -m pip install -e .` dostępne są komendy
 `steganografia embed`, `steganografia extract` i `steganografia capacity`.
 Te same komendy można uruchamiać przez `python -m steganografia`.
 
+Metoda JSteg jest dostępna dla obrazów PNG przez osobną grupę komend:
+
+```sh
+steganografia jsteg capacity oryginal.png
+steganografia jsteg embed oryginal.png wiadomosc.jpg --text "Tajna wiadomość"
+steganografia jsteg extract wiadomosc.jpg
+```
+
+JSteg modyfikuje parzystość niezerowych współczynników AC luminancji po
+kwantyzacji. Wynik jest zapisywany jako JPEG bezpośrednio ze zmodyfikowanych,
+skwantyzowanych współczynników DCT. Ekstrakcja odczytuje te współczynniki
+z pliku JPEG i nie wykonuje pośredniej rekonstrukcji RGB.
+
+Wariant JSteg-MF ogranicza osadzanie do niezerowych współczynników AC
+o pozycjach 5–40 w kolejności zig-zag i pomija współczynniki `+1` oraz `-1`.
+Udostępnia te same podkomendy:
+
+```sh
+steganografia jsteg-mf capacity oryginal.png
+steganografia jsteg-mf embed oryginal.png wiadomosc.jpg --text "Tajna wiadomość"
+steganografia jsteg-mf extract wiadomosc.jpg
+```
+
 ```sh
 steganografia capacity oryginal.png
 steganografia embed oryginal.png wiadomosc.png --text "Zażółć gęślą jaźń"
