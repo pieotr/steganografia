@@ -12,6 +12,16 @@ from .frame import FrameError, pack, unpack
 from .images import ImageError, load_cover, load_stego, save_png
 from .jpeg import png_to_jpeg
 from .lsb import capacity_bytes, embed_frame, extract_frame, payload_capacity_bytes
+from .jsteg import (
+    capacity_bytes as jsteg_capacity_bytes,
+    embed_frame as jsteg_embed_frame,
+    extract_frame as jsteg_extract_frame,
+    mf_capacity_bytes as jsteg_mf_capacity_bytes,
+    mf_embed_frame as jsteg_mf_embed_frame,
+    mf_extract_frame as jsteg_mf_extract_frame,
+    mf_payload_capacity_bytes as jsteg_mf_payload_capacity_bytes,
+    payload_capacity_bytes as jsteg_payload_capacity_bytes,
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -92,6 +102,41 @@ def _parser() -> argparse.ArgumentParser:
         "--force", "--overwrite", dest="overwrite", action="store_true",
         help="jawnie zezwól na nadpisanie istniejącego pliku",
     )
+    for method, help_text in (
+        ("jsteg", "JSteg"),
+        ("jsteg-mf", "JSteg-MF"),
+    ):
+        method_parser = commands.add_parser(
+            method,
+            help=f"osadzaj lub odczytuj tekst metodą {help_text}",
+        )
+        method_commands = method_parser.add_subparsers(
+            dest=f"{method.replace('-', '_')}_command",
+            required=True,
+        )
+        method_capacity = method_commands.add_parser(
+            "capacity", help=f"pokaż pojemność {help_text}"
+        )
+        method_capacity.add_argument("input", metavar="WEJŚCIE", help="obraz RGB")
+        method_embed = method_commands.add_parser(
+            "embed", help=f"osadź tekst metodą {help_text}"
+        )
+        method_embed.add_argument("input", metavar="WEJŚCIE", help="obraz RGB")
+        method_embed.add_argument("output", metavar="WYJŚCIE", help="wynikowy PNG")
+        method_source = method_embed.add_mutually_exclusive_group(required=True)
+        method_source.add_argument("--text", metavar="TEKST")
+        method_source.add_argument("--text-file", metavar="PLIK.txt")
+        method_embed.add_argument(
+            "--force", "--overwrite", dest="overwrite", action="store_true"
+        )
+        method_extract = method_commands.add_parser(
+            "extract", help=f"odczytaj tekst metodą {help_text}"
+        )
+        method_extract.add_argument("input", metavar="WEJŚCIE", help="obraz PNG")
+        method_extract.add_argument("-o", "--output", metavar="PLIK.txt")
+        method_extract.add_argument(
+            "--force", "--overwrite", dest="overwrite", action="store_true"
+        )
     return parser
 
 
@@ -99,6 +144,22 @@ def _capacity_message(image) -> str:
     return (
         f"Pojemność: {capacity_bytes(image)} B ramki; "
         f"{payload_capacity_bytes(image)} B tekstu UTF-8 "
+        "(po odjęciu nagłówka 13 B)."
+    )
+
+
+def _jsteg_capacity_message(image) -> str:
+    return (
+        f"Pojemność JSteg: {jsteg_capacity_bytes(image)} B ramki; "
+        f"{jsteg_payload_capacity_bytes(image)} B tekstu UTF-8 "
+        "(po odjęciu nagłówka 13 B)."
+    )
+
+
+def _jsteg_mf_capacity_message(image) -> str:
+    return (
+        f"Pojemność JSteg-MF: {jsteg_mf_capacity_bytes(image)} B ramki; "
+        f"{jsteg_mf_payload_capacity_bytes(image)} B tekstu UTF-8 "
         "(po odjęciu nagłówka 13 B)."
     )
 
@@ -137,10 +198,52 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     args.overwrite = bool(getattr(args, "overwrite", False))
+    method_command = (
+        getattr(args, "jsteg_command", None)
+        if args.command == "jsteg"
+        else getattr(args, "jsteg_mf_command", None)
+    )
+    if args.command in {"jsteg", "jsteg-mf"} and method_command == "extract" and args.overwrite and args.output is None:
+        parser.error("--force wymaga --output wskazującego plik tekstowy")
     if args.command == "extract" and args.overwrite and args.output is None:
         parser.error("--force wymaga --output wskazującego plik tekstowy")
     try:
-        if args.command == "extract":
+        if args.command in {"jsteg", "jsteg-mf"}:
+            is_mf = args.command == "jsteg-mf"
+            capacity_fn = jsteg_mf_capacity_bytes if is_mf else jsteg_capacity_bytes
+            payload_capacity_fn = (
+                jsteg_mf_payload_capacity_bytes
+                if is_mf else jsteg_payload_capacity_bytes
+            )
+            embed_fn = jsteg_mf_embed_frame if is_mf else jsteg_embed_frame
+            extract_fn = jsteg_mf_extract_frame if is_mf else jsteg_extract_frame
+            message_fn = _jsteg_mf_capacity_message if is_mf else _jsteg_capacity_message
+            if method_command == "capacity":
+                image = load_cover(args.input)
+                print(message_fn(image))
+                return 0
+            image = load_stego(args.input) if method_command == "extract" else load_cover(args.input)
+            if method_command == "extract":
+                frame = extract_fn(image)
+                text = unpack(frame, capacity_bytes=capacity_fn(image))
+                print(message_fn(image), file=sys.stderr)
+                if args.output is not None:
+                    _save_text(text, args.output, overwrite=args.overwrite)
+                else:
+                    sys.stdout.write(text)
+                return 0
+            if args.command != "capacity" and Path(args.input).resolve() == Path(args.output).resolve():
+                raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
+            message = message_fn(image)
+            print(message, file=sys.stderr)
+            text = (
+                _read_text(args.text_file, payload_capacity_fn(image))
+                if args.text_file is not None else args.text
+            )
+            frame = pack(text, capacity_bytes=capacity_fn(image))
+            save_png(embed_fn(image, frame), args.output, overwrite=args.overwrite)
+            print(f"Zapisano PNG: {args.output}", file=sys.stderr)
+        elif args.command == "extract":
             image = load_stego(args.input)
             try:
                 frame = extract_frame(image)
@@ -155,12 +258,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 sys.stdout.write(text)
         else:
             if args.command == "jpeg":
-                if Path(args.input).resolve() == Path(args.output).resolve():
+                if args.command != "capacity" and Path(args.input).resolve() == Path(args.output).resolve():
                     raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
                 png_to_jpeg(args.input, args.output, overwrite=args.overwrite)
                 print(f"Zapisano JPEG: {args.output}", file=sys.stderr)
                 return 0
-            if Path(args.input).resolve() == Path(args.output).resolve():
+            if args.command != "capacity" and Path(args.input).resolve() == Path(args.output).resolve():
                 raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
             image = load_cover(args.input)
             message = _capacity_message(image)

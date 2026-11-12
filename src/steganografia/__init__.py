@@ -25,12 +25,23 @@ from .dct import (
     LUMINANCE_QUANTIZATION,
     dct_block,
     get_block,
+    idct_block,
     quantize_block,
     rgb_to_ycbcr,
     subsample_420,
     zigzag_scan,
 )
 from .jpeg import png_to_jpeg, write_jpeg
+from .jsteg import (
+    capacity_bytes as jsteg_capacity_bytes,
+    embed_frame as jsteg_embed_frame,
+    extract_frame as jsteg_extract_frame,
+    mf_capacity_bytes as jsteg_mf_capacity_bytes,
+    mf_embed_frame as jsteg_mf_embed_frame,
+    mf_extract_frame as jsteg_mf_extract_frame,
+    mf_payload_capacity_bytes as jsteg_mf_payload_capacity_bytes,
+    payload_capacity_bytes as jsteg_payload_capacity_bytes,
+)
 
 __all__ = [
     "HEADER_SIZE",
@@ -43,9 +54,18 @@ __all__ = [
     "LUMINANCE_QUANTIZATION",
     "dct_block",
     "get_block",
+    "idct_block",
     "quantize_block",
     "ImageError",
     "capacity_bytes",
+    "jsteg_capacity_bytes",
+    "jsteg_embed_frame",
+    "jsteg_extract_frame",
+    "jsteg_payload_capacity_bytes",
+    "jsteg_mf_capacity_bytes",
+    "jsteg_mf_embed_frame",
+    "jsteg_mf_extract_frame",
+    "jsteg_mf_payload_capacity_bytes",
     "embed_bits",
     "embed_frame",
     "extract_bits",
