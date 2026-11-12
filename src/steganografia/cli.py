@@ -125,7 +125,7 @@ def _parser() -> argparse.ArgumentParser:
             "embed", help=f"osadź tekst metodą {help_text}"
         )
         method_embed.add_argument("input", metavar="WEJŚCIE", help="obraz RGB")
-        method_embed.add_argument("output", metavar="WYJŚCIE", help="wynikowy JPEG")
+        method_embed.add_argument("output", metavar="WYJŚCIE", help="wynikowy obraz")
         method_source = method_embed.add_mutually_exclusive_group(required=True)
         method_source.add_argument("--text", metavar="TEKST")
         method_source.add_argument("--text-file", metavar="PLIK.txt")
@@ -141,7 +141,7 @@ def _parser() -> argparse.ArgumentParser:
         method_extract = method_commands.add_parser(
             "extract", help=f"odczytaj tekst metodą {help_text}"
         )
-        method_extract.add_argument("input", metavar="WEJŚCIE", help="obraz JPEG")
+        method_extract.add_argument("input", metavar="WEJŚCIE", help="obraz z ukrytą wiadomością")
         method_extract.add_argument("-o", "--output", metavar="PLIK.txt")
         method_extract.add_argument(
             "--force", "--overwrite", dest="overwrite", action="store_true"
@@ -202,7 +202,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.command in METHOD_REGISTRY.names()
         else None
     )
-    if args.command in {"jsteg", "jsteg-mf", "f5"} and method_command == "extract" and args.overwrite and args.output is None:
+    if args.command in METHOD_REGISTRY.names() and method_command == "extract" and args.overwrite and args.output is None:
         parser.error("--force wymaga --output wskazującego plik tekstowy")
     if args.command == "extract" and args.overwrite and args.output is None:
         parser.error("--force wymaga --output wskazującego plik tekstowy")
@@ -218,21 +218,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if operation == "capacity":
                 stats = method.capacity_bytes(Path(args.input).read_bytes(), **options)
                 total = stats["capacity_bytes"]
+                if total < 13:
+                    raise FrameError(f"Obraz mieści {total} B; nagłówek wymaga 13 B")
                 print(
                     f"Pojemność {method.metadata.label}: {total} B ramki; "
                     f"{stats.get('payload_capacity_bytes', max(0, total - 13))} B tekstu UTF-8."
                 )
                 return 0
             if operation == "extract":
-                text = method.extract_bytes(Path(args.input).read_bytes(), **options)
+                try:
+                    text = method.extract_bytes(Path(args.input).read_bytes(), **options)
+                except FrameError as exc:
+                    raise FrameError(f"niepoprawna ramka STEG: {str(exc).lower()}") from exc
                 if args.output is not None:
                     _save_text(text, args.output, overwrite=args.overwrite)
                 else:
                     sys.stdout.write(text)
                 return 0
 
+            if Path(args.input).resolve() == Path(args.output).resolve():
+                raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
             stats = method.capacity_bytes(Path(args.input).read_bytes(), **options)
             total = stats["capacity_bytes"]
+            if total < 13:
+                raise FrameError(f"Obraz mieści {total} B; nagłówek wymaga 13 B")
             payload_limit = stats.get("payload_capacity_bytes", max(0, total - 13))
             text_file = getattr(args, "text_file", None)
             text = _read_text(text_file, payload_limit) if text_file else args.text
@@ -255,78 +264,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"Zapisano {method.metadata.output_format.upper()}: {target}", file=sys.stderr)
             return 0
 
-        if args.command == "f5":
-            if method_command == "capacity":
-                image = load_cover(args.input)
-                total = f5_capacity_from_png(image)
-                if total < 13:
-                    raise FrameError(f"Obraz mieści {total} B; nagłówek wymaga 13 B")
-                print(f"Pojemność F5: {total} B ramki; {total - 13} B tekstu UTF-8 (po odjęciu nagłówka 13 B).")
-                return 0
-            if method_command == "extract":
-                frame = f5_extract_jpeg(args.input, key=args.key)
-                total = f5_capacity_from_jpeg(args.input)
-                text = unpack(frame, capacity_bytes=total)
-                print(f"Pojemność F5: {total} B ramki; {max(0, total - 13)} B tekstu UTF-8 (po odjęciu nagłówka 13 B).", file=sys.stderr)
-                if args.output is not None:
-                    _save_text(text, args.output, overwrite=args.overwrite)
-                else:
-                    sys.stdout.write(text)
-                return 0
-            image = load_cover(args.input)
-            total = f5_capacity_from_png(image)
-            if Path(args.output).suffix.lower() not in {".jpg", ".jpeg"}:
-                raise ImageError("Obraz wynikowy musi mieć rozszerzenie .jpg lub .jpeg")
-            if total < 13:
-                raise FrameError(f"Obraz mieści {total} B; nagłówek wymaga 13 B")
-            print(f"Pojemność F5: {total} B ramki; {total - 13} B tekstu UTF-8 (po odjęciu nagłówka 13 B).", file=sys.stderr)
-            text = _read_text(args.text_file, total - 13) if args.text_file is not None else args.text
-            frame = pack(text, capacity_bytes=total)
-            f5_embed_jpeg(args.input, args.output, frame, key=args.key, overwrite=args.overwrite)
-            print(f"Zapisano JPEG: {args.output}", file=sys.stderr)
-        elif args.command in {"jsteg", "jsteg-mf"}:
-            is_mf = args.command == "jsteg-mf"
-            label = "JSteg-MF" if is_mf else "JSteg"
-            if method_command == "capacity":
-                image = load_cover(args.input)
-                total = jsteg_png_jpeg_capacity_bytes(image, mf=is_mf)
-                if total < 13:
-                    raise FrameError(f"Obraz mieści {total} B; nagłówek wymaga 13 B")
-                print(f"Pojemność {label}: {total} B ramki; {total - 13} B tekstu UTF-8 (po odjęciu nagłówka 13 B).")
-                return 0
-            if method_command == "extract":
-                frame = jsteg_extract_jpeg(args.input, mf=is_mf)
-                total = jsteg_jpeg_capacity_bytes(args.input, mf=is_mf)
-                text = unpack(frame, capacity_bytes=total)
-                print(f"Pojemność {label}: {total} B ramki; {max(0, total - 13)} B tekstu UTF-8 (po odjęciu nagłówka 13 B).", file=sys.stderr)
-                if args.output is not None:
-                    _save_text(text, args.output, overwrite=args.overwrite)
-                else:
-                    sys.stdout.write(text)
-                return 0
-            image = load_cover(args.input)
-            total = jsteg_png_jpeg_capacity_bytes(image, mf=is_mf)
-            if Path(args.output).suffix.lower() not in {".jpg", ".jpeg"}:
-                raise ImageError("Obraz wynikowy musi mieć rozszerzenie .jpg lub .jpeg")
-            if Path(args.input).resolve() == Path(args.output).resolve():
-                raise ImageError("Plik wejściowy i wynikowy muszą różnić się")
-            if total < 13:
-                raise FrameError(f"Obraz mieści {total} B; nagłówek wymaga 13 B")
-            print(f"Pojemność {label}: {total} B ramki; {total - 13} B tekstu UTF-8 (po odjęciu nagłówka 13 B).", file=sys.stderr)
-            text = (
-                _read_text(args.text_file, total - 13)
-                if args.text_file is not None else args.text
-            )
-            frame = pack(text, capacity_bytes=total)
-            jsteg_embed_jpeg(args.input, args.output, frame, mf=is_mf, overwrite=args.overwrite)
-            print(f"Zapisano JPEG: {args.output}", file=sys.stderr)
         elif args.command == "extract":
             image = load_stego(args.input)
             try:
                 frame = extract_frame(image)
                 text = unpack(frame, capacity_bytes=capacity_bytes(image))
             except FrameError as exc:
-                raise FrameError(f"Niepoprawna ramka STEG: {exc}") from exc
+                raise FrameError(f"niepoprawna ramka STEG: {str(exc).lower()}") from exc
             print(_capacity_message(image), file=sys.stderr)
             if args.output is not None:
                 _save_text(text, args.output, overwrite=args.overwrite)
@@ -335,18 +279,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 sys.stdout.write(text)
         else:
             if args.command == "jpeg":
-                if args.command != "capacity" and Path(args.input).resolve() == Path(args.output).resolve():
-                    raise ImageError("Plik wejściowy i wynikowy muszą różnić się")
+                if Path(args.input).resolve() == Path(args.output).resolve():
+                    raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
                 png_to_jpeg(args.input, args.output, overwrite=args.overwrite)
                 print(f"Zapisano JPEG: {args.output}", file=sys.stderr)
                 return 0
-            if args.command != "capacity" and Path(args.input).resolve() == Path(args.output).resolve():
-                raise ImageError("Plik wejściowy i wynikowy muszą różnić się")
             image = load_cover(args.input)
-            message = _capacity_message(image)
             if args.command == "capacity":
-                print(message)
+                print(_capacity_message(image))
                 return 0
+            if Path(args.input).resolve() == Path(args.output).resolve():
+                raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
+            message = _capacity_message(image)
             print(message, file=sys.stderr)
             text = (
                 _read_text(args.text_file, payload_capacity_bytes(image))

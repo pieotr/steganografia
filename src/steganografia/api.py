@@ -301,7 +301,7 @@ def read_png_bytes(file_storage: Any) -> bytes:
 def load_png_from_bytes(payload: bytes, *, mode: str = "cover") -> np.ndarray:
     """Wczytaj PNG z bajtów do tablicy NumPy. Tryb cover/extract ma znaczenie."""
     if mode not in {"cover", "stego"}:
-        raise ValueError("Nieznany tryb wczytania PNG: {mode}")
+        raise ValueError(f"Nieznany tryb wczytania PNG: {mode}")
     temporary_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as stream:

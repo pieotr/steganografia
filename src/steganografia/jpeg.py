@@ -468,7 +468,14 @@ def read_jpeg(path: Union[str, PathLike[str]]) -> JpegCoefficients:
             cb_blocks.append(block)
             block, previous[3] = _decode_block(reader, previous[3], *tables[3])
             cr_blocks.append(block)
-    y_blocks = [block for row in y_grid for block in row]
+            
+    # Odcięcie sztucznych bloków paddingu MCU
+    y_blocks = []
+    y_blocks_x = (width + 7) // 8
+    y_blocks_y = (height + 7) // 8
+    for r in range(y_blocks_y):
+        y_blocks.extend(y_grid[r][:y_blocks_x])
+        
     return JpegCoefficients(width, height, y_blocks, cb_blocks, cr_blocks)
 
 
