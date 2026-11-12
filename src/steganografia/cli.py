@@ -309,7 +309,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if Path(args.output).suffix.lower() not in {".jpg", ".jpeg"}:
                 raise ImageError("Obraz wynikowy musi mieć rozszerzenie .jpg lub .jpeg")
             if Path(args.input).resolve() == Path(args.output).resolve():
-                raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
+                raise ImageError("Plik wejściowy i wynikowy muszą różnić się")
             if total < 13:
                 raise FrameError(f"Obraz mieści {total} B; nagłówek wymaga 13 B")
             print(f"Pojemność {label}: {total} B ramki; {total - 13} B tekstu UTF-8 (po odjęciu nagłówka 13 B).", file=sys.stderr)
@@ -326,7 +326,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 frame = extract_frame(image)
                 text = unpack(frame, capacity_bytes=capacity_bytes(image))
             except FrameError as exc:
-                raise FrameError(f"niepoprawna ramka STEG: {str(exc).lower()}") from exc
+                raise FrameError(f"Niepoprawna ramka STEG: {exc}") from exc
             print(_capacity_message(image), file=sys.stderr)
             if args.output is not None:
                 _save_text(text, args.output, overwrite=args.overwrite)
@@ -336,12 +336,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             if args.command == "jpeg":
                 if args.command != "capacity" and Path(args.input).resolve() == Path(args.output).resolve():
-                    raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
+                    raise ImageError("Plik wejściowy i wynikowy muszą różnić się")
                 png_to_jpeg(args.input, args.output, overwrite=args.overwrite)
                 print(f"Zapisano JPEG: {args.output}", file=sys.stderr)
                 return 0
             if args.command != "capacity" and Path(args.input).resolve() == Path(args.output).resolve():
-                raise ImageError("Plik wejściowy i wynikowy muszą się różnić")
+                raise ImageError("Plik wejściowy i wynikowy muszą różnić się")
             image = load_cover(args.input)
             message = _capacity_message(image)
             if args.command == "capacity":
