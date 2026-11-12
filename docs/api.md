@@ -1,6 +1,6 @@
 # API Flask dla steganografii
 
-Serwer Flask jest przygotowany do pracy z frontendem i obsługuje metody LSB oraz DCT. DCT wykonuje osadzanie w niezerowych, skwantyzowanych współczynnikach AC luminancji i zwraca wynikowy obraz JPEG.
+Serwer Flask jest przygotowany do pracy z frontendem i obsługuje metody LSB, DCT, JSteg-MF oraz F5. Metody JPEG wykonują osadzanie w skwantyzowanych współczynnikach AC i zwracają wynikowy obraz JPEG.
 
 ## Uruchomienie
 
@@ -149,6 +149,14 @@ curl -X POST http://localhost:5000/api/v1/dct/extract \
 ```
 
 Odpowiedź ma taki sam format jak dla LSB: `text`, `length_chars` i `encoding`.
+
+### POST /api/v1/jsteg-mf/{capacity,embed,extract}
+
+Endpointy JSteg-MF mają ten sam format żądań i odpowiedzi co endpointy DCT, ale używają metody `jsteg-mf`.
+
+### POST /api/v1/f5/{capacity,embed,extract}
+
+Endpointy F5 mają ten sam format co endpointy metod JPEG. Endpointy `embed` i `extract` przyjmują opcjonalne pole formularza `key`; jego brak oznacza domyślny klucz `steganografia-f5`.
 
 ## Architektura rozszerzalna
 

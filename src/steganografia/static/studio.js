@@ -5,8 +5,8 @@
 const METHODS = Object.freeze({
   lsb: { label: 'LSB', endpoint: 'lsb', format: 'PNG', mime: 'image/png', extension: 'png' },
   jsteg: { label: 'JSteg', endpoint: 'dct', format: 'JPEG', mime: 'image/jpeg', extension: 'jpg' },
-  'jsteg-mf': { label: 'JSteg-MF', endpoint: null, format: 'JPEG' },
-  f5: { label: 'F5', endpoint: null, format: 'JPEG' },
+  'jsteg-mf': { label: 'JSteg-MF', endpoint: 'jsteg-mf', format: 'JPEG', mime: 'image/jpeg', extension: 'jpg' },
+  f5: { label: 'F5', endpoint: 'f5', format: 'JPEG', mime: 'image/jpeg', extension: 'jpg' },
 });
 
 function uploadConfig(method = 'lsb', mode = 'crypt') {
@@ -178,7 +178,7 @@ if (typeof document !== 'undefined') {
       const payload = new FormData();
       payload.append('file', state.file);
       if (state.mode === 'crypt') payload.append('text', $('secretMessage').value);
-      // F5 has no HTTP contract yet, so its key is deliberately not transmitted.
+      if (state.method === 'f5' && $('f5Key').value) payload.append('key', $('f5Key').value);
       const action = state.mode === 'crypt' ? 'embed' : 'extract';
       const response = await fetch(`/api/v1/${method.endpoint}/${action}`, {
         method: 'POST', body: payload, signal: AbortSignal.timeout(120000),

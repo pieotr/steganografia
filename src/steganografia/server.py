@@ -8,6 +8,12 @@ Dostępne endpointy:
 - /api/v1/dct/capacity
 - /api/v1/dct/embed
 - /api/v1/dct/extract
+- /api/v1/jsteg-mf/capacity
+- /api/v1/jsteg-mf/embed
+- /api/v1/jsteg-mf/extract
+- /api/v1/f5/capacity
+- /api/v1/f5/embed
+- /api/v1/f5/extract
 - /api/v1/openapi.json
 - /api/v1/swagger
 """
@@ -195,6 +201,68 @@ OPENAPI_SPEC = {
     },
 }
 
+for _method_name, _method_label, _key_option in (
+    ("jsteg-mf", "JSteg-MF", False),
+    ("f5", "F5", True),
+):
+    _options = {
+        "key": {"type": "string", "description": "Klucz F5", "default": "steganografia-f5"}
+    } if _key_option else {}
+    OPENAPI_SPEC["paths"].update({
+        f"/{_method_name}/capacity": {
+            "post": {
+                "summary": f"Pojemność obrazu dla {_method_label}",
+                "requestBody": {
+                    "required": True,
+                    "content": {"multipart/form-data": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "file": {"type": "string", "format": "binary"},
+                            **_options,
+                        },
+                        "required": ["file"],
+                    }}},
+                },
+                "responses": {"200": {"description": "Prawidłowa odpowiedź"}},
+            }
+        },
+        f"/{_method_name}/embed": {
+            "post": {
+                "summary": f"Osadź tekst metodą {_method_label}",
+                "requestBody": {
+                    "required": True,
+                    "content": {"multipart/form-data": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "file": {"type": "string", "format": "binary"},
+                            "text": {"type": "string"},
+                            **_options,
+                        },
+                        "required": ["file", "text"],
+                    }}},
+                },
+                "responses": {"200": {"description": "Obraz JPEG z ukrytym tekstem"}},
+            }
+        },
+        f"/{_method_name}/extract": {
+            "post": {
+                "summary": f"Odczytaj tekst metodą {_method_label}",
+                "requestBody": {
+                    "required": True,
+                    "content": {"multipart/form-data": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "file": {"type": "string", "format": "binary"},
+                            **_options,
+                        },
+                        "required": ["file"],
+                    }}},
+                },
+                "responses": {"200": {"description": "Tekst odzyskany z obrazu JPEG"}},
+            }
+        },
+    })
+
 
 def _json_error(message: str, status_code: int = 400):
     response = jsonify({"error": message, "status": "error"})
@@ -366,6 +434,88 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
         return jsonify({
             "success": True,
             "method": "dct",
+            "text": text,
+            "length_chars": len(text),
+            "encoding": "utf-8",
+        })
+
+    @app.post("/api/v1/jsteg-mf/capacity")
+    def jsteg_mf_capacity():
+        cover = read_png_bytes(request.files.get("file"))
+        stats = _resolve_method("jsteg-mf").capacity_bytes(cover)
+        return jsonify({
+            "method": "jsteg-mf",
+            "format": "PNG",
+            "output_format": "JPEG",
+            "capacity_bytes": stats["capacity_bytes"],
+            "payload_capacity_bytes": stats["payload_capacity_bytes"],
+        })
+
+    @app.post("/api/v1/jsteg-mf/embed")
+    def jsteg_mf_embed():
+        cover = read_png_bytes(request.files.get("file"))
+        text = request.form.get("text")
+        if text is None:
+            raise BadRequest("Brakuje pola 'text'.")
+        encoded = _resolve_method("jsteg-mf").embed_bytes(cover, text)
+        return jsonify({
+            "success": True,
+            "method": "jsteg-mf",
+            "format": "JPEG",
+            "image_base64": base64.b64encode(encoded.data).decode("ascii"),
+            "payload_length_chars": len(text),
+        })
+
+    @app.post("/api/v1/jsteg-mf/extract")
+    def jsteg_mf_extract():
+        encoded = read_jpeg_bytes(request.files.get("file"))
+        text = _resolve_method("jsteg-mf").extract_bytes(encoded)
+        return jsonify({
+            "success": True,
+            "method": "jsteg-mf",
+            "text": text,
+            "length_chars": len(text),
+            "encoding": "utf-8",
+        })
+
+    @app.post("/api/v1/f5/capacity")
+    def f5_capacity():
+        cover = read_png_bytes(request.files.get("file"))
+        stats = _resolve_method("f5").capacity_bytes(cover)
+        return jsonify({
+            "method": "f5",
+            "format": "PNG",
+            "output_format": "JPEG",
+            "capacity_bytes": stats["capacity_bytes"],
+            "payload_capacity_bytes": stats["payload_capacity_bytes"],
+        })
+
+    @app.post("/api/v1/f5/embed")
+    def f5_embed():
+        cover = read_png_bytes(request.files.get("file"))
+        text = request.form.get("text")
+        if text is None:
+            raise BadRequest("Brakuje pola 'text'.")
+        key = request.form.get("key")
+        options = {"key": key} if key else {}
+        encoded = _resolve_method("f5").embed_bytes(cover, text, **options)
+        return jsonify({
+            "success": True,
+            "method": "f5",
+            "format": "JPEG",
+            "image_base64": base64.b64encode(encoded.data).decode("ascii"),
+            "payload_length_chars": len(text),
+        })
+
+    @app.post("/api/v1/f5/extract")
+    def f5_extract():
+        encoded = read_jpeg_bytes(request.files.get("file"))
+        key = request.form.get("key")
+        options = {"key": key} if key else {}
+        text = _resolve_method("f5").extract_bytes(encoded, **options)
+        return jsonify({
+            "success": True,
+            "method": "f5",
             "text": text,
             "length_chars": len(text),
             "encoding": "utf-8",
