@@ -1,0 +1,6 @@
+id_obrazu,metoda,rozmiar_wiadomosci_B,parametry,MSE,PSNR_dB,status_odzyskania
+oryginal.png,lsb,44,default,0.0,71.47,OK
+oryginal.png,dct,44,default,3242.05,13.02,OK
+oryginal.png,jsteg-mf,44,default,3192.37,13.09,OK
+oryginal.png,f5,44,default,3189.2,13.09,OK
+zaklocony_lsb.png,lsb,44,JPEG_Q75,18.42,35.48,FAIL (CRC32/MAGIC)
