@@ -14,6 +14,12 @@ Dostępne endpointy:
 - /api/v1/f5/capacity
 - /api/v1/f5/embed
 - /api/v1/f5/extract
+- /api/v1/outguess/capacity
+- /api/v1/outguess/embed
+- /api/v1/outguess/extract
+- /api/v1/nsf5/capacity
+- /api/v1/nsf5/embed
+- /api/v1/nsf5/extract
 - /api/v1/openapi.json
 - /api/v1/swagger
 """
@@ -27,7 +33,7 @@ from pathlib import Path
 from typing import Any, Optional, Sequence, Union
 
 from flask import Flask, jsonify, request, send_from_directory
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, HTTPException, MethodNotAllowed
 
 from .api import (
     METHOD_REGISTRY,
@@ -57,20 +63,104 @@ FRONTEND_DIR = _resolve_frontend_dir()
 
 def build_openapi_spec() -> dict[str, Any]:
     """Generuj specyfikację OpenAPI bezpośrednio z METHOD_REGISTRY."""
+    error_schema = {
+        "type": "object",
+        "properties": {
+            "error": {"type": "string", "description": "Opis błędu"},
+            "status": {"type": "string", "enum": ["error"]},
+        },
+        "required": ["error", "status"],
+    }
+    standard_error_responses = {
+        "400": {
+            "description": "Nieprawidłowe dane wejściowe lub nieobsługiwany format pliku",
+            "content": {"application/json": {"schema": error_schema}},
+        },
+        "413": {
+            "description": "Przekroczono limit 64 MB zawartości żądania",
+            "content": {"application/json": {"schema": error_schema}},
+        },
+        "404": {
+            "description": "Nie znaleziono zasobu lub metody",
+            "content": {"application/json": {"schema": error_schema}},
+        },
+        "405": {
+            "description": "Nieobsługiwana metoda HTTP",
+            "content": {"application/json": {"schema": error_schema}},
+        },
+        "500": {
+            "description": "Wewnętrzny błąd serwera",
+            "content": {"application/json": {"schema": error_schema}},
+        },
+    }
+    health_error_responses = {
+        "500": standard_error_responses["500"],
+    }
+
     paths: dict[str, Any] = {
         "/health": {
             "get": {
                 "summary": "Stan serwera",
-                "responses": {"200": {"description": "Serwer działa"}},
+                "responses": {
+                    "200": {
+                        "description": "Serwer działa",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {"type": "string", "enum": ["ok"]},
+                                        "service": {"type": "string"},
+                                        "methods": {
+                                            "type": "array",
+                                            "items": {"type": "string"},
+                                        },
+                                    },
+                                    "required": ["status", "service", "methods"],
+                                }
+                            }
+                        },
+                    },
+                    **health_error_responses,
+                },
             }
-        }
+        },
+        "/openapi.json": {
+            "get": {
+                "summary": "Specyfikacja OpenAPI",
+                "responses": {
+                    "200": {
+                        "description": "Dynamiczna specyfikacja OpenAPI",
+                        "content": {"application/json": {"schema": {"type": "object"}}},
+                    },
+                    **health_error_responses,
+                },
+            }
+        },
+        "/swagger": {
+            "get": {
+                "summary": "Interfejs Swagger UI",
+                "responses": {
+                    "200": {
+                        "description": "Strona HTML Swagger UI",
+                        "content": {"text/html": {"schema": {"type": "string"}}},
+                    },
+                    **health_error_responses,
+                },
+            }
+        },
     }
 
     for name in METHOD_REGISTRY.names():
         metadata = METHOD_REGISTRY.get(name).metadata
         label = metadata.label
-        input_format = metadata.input_formats[0] if metadata.input_formats else "png"
+        input_formats = tuple(metadata.input_formats)
         output_format = metadata.output_format
+        input_description = (
+            "Jeden z obsługiwanych formatów: " + ", ".join(fmt.upper() for fmt in input_formats)
+            if input_formats
+            else "Obsługiwany format obrazu"
+        )
 
         option_properties: dict[str, Any] = {}
         for option_name, option in metadata.options.items():
@@ -83,12 +173,18 @@ def build_openapi_spec() -> dict[str, Any]:
             "file": {
                 "type": "string",
                 "format": "binary",
-                "description": f"Obraz wejściowy {input_format.upper()}",
+                "description": input_description,
             }
         }
 
         for operation in ("capacity", "embed", "extract"):
-            properties = dict(base_file_properties)
+            properties = {
+                "file": dict(base_file_properties["file"])
+            }
+            if operation == "extract":
+                properties["file"]["description"] = (
+                    f"Obraz wynikowy {output_format.upper()}"
+                )
             if operation == "embed":
                 properties["text"] = {
                     "type": "string",
@@ -100,12 +196,51 @@ def build_openapi_spec() -> dict[str, Any]:
             if operation == "capacity":
                 summary = f"Pojemność obrazu dla {label}"
                 response_description = "Pojemność w bajtach"
+                success_schema = {
+                    "type": "object",
+                    "properties": {
+                        "method": {"type": "string", "enum": [name]},
+                        "format": {"type": "string", "enum": [fmt.upper() for fmt in input_formats]},
+                        "output_format": {"type": "string", "enum": [output_format.upper()]},
+                        "capacity_bytes": {"type": "integer", "minimum": 0},
+                        "payload_capacity_bytes": {"type": "integer", "minimum": 0},
+                    },
+                    "required": ["method", "format", "output_format", "capacity_bytes", "payload_capacity_bytes"],
+                }
             elif operation == "embed":
                 summary = f"Osadź tekst metodą {label}"
                 response_description = f"Obraz {output_format.upper()} zakodowany w base64"
+                success_schema = {
+                    "type": "object",
+                    "properties": {
+                        "success": {"type": "boolean", "enum": [True]},
+                        "method": {"type": "string", "enum": [name]},
+                        "format": {"type": "string", "enum": [output_format.upper()]},
+                        "image_base64": {"type": "string", "format": "byte"},
+                        "payload_length_chars": {"type": "integer", "minimum": 0},
+                    },
+                    "required": [
+                        "success",
+                        "method",
+                        "format",
+                        "image_base64",
+                        "payload_length_chars",
+                    ],
+                }
             else:
                 summary = f"Odczytaj tekst metodą {label}"
                 response_description = "Tekst odzyskany z obrazu"
+                success_schema = {
+                    "type": "object",
+                    "properties": {
+                        "success": {"type": "boolean", "enum": [True]},
+                        "method": {"type": "string", "enum": [name]},
+                        "text": {"type": "string"},
+                        "length_chars": {"type": "integer", "minimum": 0},
+                        "encoding": {"type": "string", "enum": ["utf-8"]},
+                    },
+                    "required": ["success", "method", "text", "length_chars", "encoding"],
+                }
 
             paths[f"/{name}/{operation}"] = {
                 "post": {
@@ -122,7 +257,15 @@ def build_openapi_spec() -> dict[str, Any]:
                             }
                         },
                     },
-                    "responses": {"200": {"description": response_description}},
+                    "responses": {
+                        "200": {
+                            "description": response_description,
+                            "content": {
+                                "application/json": {"schema": success_schema}
+                            },
+                        },
+                        **standard_error_responses,
+                    },
                 }
             }
 
@@ -151,6 +294,16 @@ def _resolve_method(method_name: str):
         raise ValueError(str(exc)) from exc
 
 
+def _read_method_input(uploaded_file, image_format: str) -> bytes:
+    """Wczytaj przesłany obraz zgodnie z formatem z metadanych metody."""
+    normalized_format = image_format.lower()
+    if normalized_format in {"png"}:
+        return read_png_bytes(uploaded_file)
+    if normalized_format in {"jpg", "jpeg"}:
+        return read_jpeg_bytes(uploaded_file)
+    raise BadRequest(f"Nieobsługiwany format obrazu wejściowego: {image_format}.")
+
+
 def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> Flask:
     """Funkcja fabryki aplikacji Flask. Ułatwia testowanie i uruchamianie."""
     static_dir = Path(frontend_dir) if frontend_dir is not None else FRONTEND_DIR
@@ -169,6 +322,31 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
     @app.errorhandler(ValueError)
     def handle_value_error(exc: ValueError):
         return _json_error(str(exc), 400)
+
+    @app.errorhandler(404)
+    def handle_not_found(exc):
+        return _json_error("Nie znaleziono zasobu.", 404)
+
+    @app.errorhandler(405)
+    def handle_method_not_allowed(exc):
+        return _json_error("Nieobsługiwana metoda HTTP.", 405)
+
+    @app.errorhandler(413)
+    def handle_request_too_large(exc):
+        return _json_error("Przekroczono limit rozmiaru żądania.", 413)
+
+    @app.errorhandler(500)
+    def handle_internal_error(exc):
+        return _json_error("Wewnętrzny błąd serwera.", 500)
+
+    @app.errorhandler(HTTPException)
+    def handle_http_error(exc: HTTPException):
+        return _json_error(exc.description, exc.code or 500)
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(exc: Exception):
+        app.logger.exception("Nieoczekiwany błąd API", exc_info=exc)
+        return _json_error("Wewnętrzny błąd serwera.", 500)
 
     @app.get("/api/v1/health")
     def health():
@@ -224,15 +402,36 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
 
     def _register_method_routes(method_name: str) -> None:
         method = _resolve_method(method_name)
+        input_format = (
+            method.metadata.input_formats[0]
+            if method.metadata.input_formats
+            else "png"
+        )
+        output_format = method.metadata.output_format
+        route_prefix = f"/api/v1/{method_name}"
 
-        @app.post(f"/api/v1/{method_name}/capacity", endpoint=f"{method_name}_capacity")
+        for operation_name in ("capacity", "embed", "extract"):
+            unsupported_path = f"{route_prefix}/{operation_name}"
+
+            @app.route(
+                unsupported_path,
+                methods=["GET", "PUT", "PATCH", "DELETE"],
+                endpoint=f"{method_name}_{operation_name}_unsupported",
+            )
+            def unsupported_method(operation_name=operation_name):
+                raise MethodNotAllowed(
+                    valid_methods=["POST"],
+                    description=f"Endpoint wymaga metody POST; operacja {operation_name} nie jest dostępna metodą HTTP żądania.",
+                )
+
+        @app.post(f"{route_prefix}/capacity", endpoint=f"{method_name}_capacity")
         def capacity(method=method, method_name=method_name):
-            cover = read_png_bytes(request.files.get("file"))
+            cover = _read_method_input(request.files.get("file"), input_format)
             stats = method.capacity_bytes(cover, **_method_options(method))
             return jsonify({
                 "method": method_name,
-                "format": "PNG",
-                "output_format": method.metadata.output_format.upper(),
+                "format": input_format.upper(),
+                "output_format": output_format.upper(),
                 "capacity_bytes": stats["capacity_bytes"],
                 "payload_capacity_bytes": stats["payload_capacity_bytes"],
             })
@@ -242,7 +441,7 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
             text = request.form.get("text")
             if text is None:
                 raise BadRequest("Brakuje pola 'text'.")
-            cover = read_png_bytes(request.files.get("file"))
+            cover = _read_method_input(request.files.get("file"), input_format)
             encoded = method.embed_bytes(cover, text, **_method_options(method))
             return jsonify({
                 "success": True,
@@ -257,10 +456,7 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
             uploaded_file = request.files.get("file")
             if uploaded_file is None:
                 raise BadRequest("Brakuje pola 'file'.")
-            if method.metadata.output_format == "png":
-                encoded = read_png_bytes(uploaded_file)
-            else:
-                encoded = read_jpeg_bytes(uploaded_file)
+            encoded = _read_method_input(uploaded_file, output_format)
             text = method.extract_bytes(encoded, **_method_options(method))
             return jsonify({
                 "success": True,

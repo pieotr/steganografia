@@ -176,9 +176,14 @@ Warstwa `steganografia.api` wykorzystuje wzorzec metody steganograficznej:
 
 DCT jest zarejestrowane w `METHOD_REGISTRY` jako metoda `dct`; endpointy używają kontraktu bajtowego `capacity_bytes`, `embed_bytes` i `extract_bytes`.
 
+Materiał prezentacyjny z diagramem UML i przebiegiem działania rejestru:
+[UML i rejestr metod](rejestr-metod.md).
+
 ## Uwagi integracyjne
 
 - LSB przyjmuje i zwraca PNG. DCT przyjmuje PNG podczas osadzania, a zwraca i odczytuje JPEG.
 - Żądania są form-data, więc frontend może wysyłać plik bezpośrednio z formularza.
 - Odpowiedzi API są w formacie JSON, z wyjątkiem wygenerowanego obrazu, który jest zwracany jako `image_base64`.
 - Endpointy są nazwane według metody (`lsb`, `dct`), a DCT korzysta z 13-bajtowej ramki STEG v1.
+- Format wejściowy i wyjściowy każdego endpointu pochodzi z `MethodMetadata.input_formats` oraz `MethodMetadata.output_format` i może być różny dla metod.
+- Specyfikacja OpenAPI opisuje kody `200`, `400`, `404`, `405`, `413` i `500` oraz zawiera schematy odpowiedzi błędów `{"error": "...", "status": "error"}`.
