@@ -1,0 +1,89 @@
+/* Neutral, square-edged controls. Only upload and icon frames stay rounded. */
+:root {
+  background: #0b0b0b;
+  --bg: #0b0b0b;
+  --panel: rgba(20, 20, 20, .94);
+  --panel-soft: #181818;
+  --line: #333;
+  --line-strong: #555;
+  --text: #f7f7f7;
+  --muted: #a3a3a3;
+  --muted-strong: #c2c2c2;
+  /* Compatibility tokens used by the existing studio and inspector. */
+  --blue: #ccc;
+  --blue-strong: #aaa;
+  --blue-soft: rgba(180, 180, 180, .12);
+}
+body { background: radial-gradient(circle at 50% -10%, #242424, transparent 38%), var(--bg); }
+.ambient-one { background: #777; }
+.ambient-two { background: #555; }
+::selection { color: #fff; background: #555; }
+button, select, textarea, input, .mode-switch, .tool-panel,
+.primary-button, .mode-button, .inspect-toggle, .inspector-secondary, .media-select-button,
+.file-preview, .result-media, .result-status, .coordinate-input,
+.media-select-list, .media-select-option { border-radius: 0; }
+select, textarea, input[type="password"], input[type="text"],
+.method-options input:not([type="checkbox"]) {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 14px;
+  color: var(--text);
+  background: #171717;
+  border: 1px solid var(--line-strong);
+}
+.method-options input[type="checkbox"] { accent-color: #ccc; }
+.method-options > .field-block + .field-block { margin-top: 20px; }
+.method-options { margin: 20px 0; }
+.method-options:empty { display: none; }
+.method-notice, .field-hint { overflow-wrap: anywhere; }
+.registry-retry {
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  color: var(--muted-strong);
+  background: transparent;
+  font-size: .76rem;
+  cursor: pointer;
+}
+.registry-retry:hover:not(:disabled) { color: var(--text); border-color: #aaa; }
+.registry-retry:disabled { cursor: wait; opacity: .6; }
+textarea { min-height: 100px; }
+textarea::placeholder, input::placeholder { color: #a3a3a3; }
+.field-label-row label, .file-meta strong { color: #e3e3e3; }
+.field-label-row > span, .file-meta small, .file-icon,
+.extracted-block > p, .result-media > p { color: #aaa; }
+.mode-switch { border-color: var(--line); background: #111; }
+.mode-button.active { color: #f0f0f0; background: #303030; box-shadow: inset 0 0 0 1px #555; }
+.dropzone { border-color: #555; border-radius: 15px; background: #111; }
+.dropzone:hover, .dropzone.dragging { border-color: #aaa; background: #222; }
+.dropzone strong { color: #e3e3e3; }
+.dropzone small { color: #a3a3a3; }
+.upload-icon, .media-option-icon { color: #ccc; border-color: #555; background: #282828; }
+.upload-icon { border-radius: 12px; }
+.media-option-icon { border-radius: 8px; }
+.remove-file { border-radius: 10px; color: #eee; background: rgba(15, 15, 15, .85); }
+.preview-media { background: #111; }
+.file-preview, .result-media { border-color: #444; background: #141414; }
+.media-placeholder, .result-placeholder { color: #ccc; background: radial-gradient(circle, #242424, #111 68%); }
+.media-placeholder small, .result-placeholder span { color: #aaa; }
+.extracted-block textarea { background: #181818; }
+.primary-button { border-color: #999; }
+.primary-button:hover:not(:disabled) { border-color: #eee; }
+.transfer-connector span { background: #aaa; box-shadow: none; }
+.transfer-connector svg { stroke: #ccc; }
+.result-status { color: #ccc; border-color: #555; background: #222; }
+.processing-orbit { border-color: #555; }
+.processing-orbit span { background: #ccc; box-shadow: none; }
+.bit-table mark { color: #111; background: #ccc; }
+/* Focus and processing indicators remain visible; semantic errors/success retain their colors. */
+button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #ccc;
+  outline-offset: 3px;
+}
+.coordinate-input input { min-height: 0; padding: 0; border: 0; background: transparent; }
+.coordinate-input input:focus-visible { outline: none; }
+@media (max-width: 540px) {
+  .field-label-row { gap: 10px; }
+  .field-label-row > span { min-width: 0; overflow-wrap: anywhere; }
+}

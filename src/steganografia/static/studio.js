@@ -1,23 +1,14 @@
 'use strict';
 
-// DCTMethod inherits JStegMethod unchanged in the supplied Python backend.
-// Registry entries are not HTTP routes: do not silently substitute MF or F5.
-const METHODS = Object.freeze({
-  lsb: { label: 'LSB', endpoint: 'lsb', format: 'PNG', mime: 'image/png', extension: 'png' },
-  jsteg: { label: 'JSteg', endpoint: 'dct', format: 'JPEG', mime: 'image/jpeg', extension: 'jpg' },
-  'jsteg-mf': { label: 'JSteg-MF', endpoint: 'jsteg-mf', format: 'JPEG', mime: 'image/jpeg', extension: 'jpg' },
-  f5: { label: 'F5', endpoint: 'f5', format: 'JPEG', mime: 'image/jpeg', extension: 'jpg' },
-});
+const registry = typeof module !== 'undefined' ? require('./method-registry.js') : MethodRegistry;
 
-function uploadConfig(method = 'lsb', mode = 'crypt') {
-  const jpeg = mode === 'decrypt' && method !== 'lsb';
-  return jpeg
-    ? { accept: 'image/jpeg,.jpg,.jpeg', mime: 'image/jpeg', extensions: ['.jpg', '.jpeg'], format: 'JPEG' }
-    : { accept: 'image/png,.png', mime: 'image/png', extensions: ['.png'], format: 'PNG' };
+function uploadConfig(method, mode = 'crypt') {
+  return method?.operations?.[mode === 'crypt' ? 'embed' : 'extract']?.input || null;
 }
 
-function validateUpload(file, method = 'lsb', mode = 'crypt') {
+function validateUpload(file, method, mode = 'crypt') {
   const config = uploadConfig(method, mode);
+  if (!config) return 'The API does not document supported image formats for this method and mode.';
   if (!file) return 'Choose an image first.';
   const extensionMatches = config.extensions.some((extension) => file.name.toLowerCase().endsWith(extension));
   if (file.type ? file.type !== config.mime : !extensionMatches) return `Choose a ${config.format} image for this method and mode.`;
@@ -27,8 +18,8 @@ function validateUpload(file, method = 'lsb', mode = 'crypt') {
 }
 
 function decodeImage(data, method) {
-  const config = METHODS[method];
-  if (data.success !== true || data.format !== config.format || typeof data.image_base64 !== 'string' || !data.image_base64) {
+  const config = method?.operations?.embed?.output;
+  if (!config || data.success !== true || data.method !== method.name || data.format !== config.format || typeof data.image_base64 !== 'string' || !data.image_base64) {
     throw new Error('The API did not return a valid encoded image.');
   }
   const binary = atob(data.image_base64);
@@ -39,12 +30,14 @@ function decodeImage(data, method) {
   return new Blob([bytes], { type: config.mime });
 }
 
-if (typeof module !== 'undefined') module.exports = { METHODS, uploadConfig, validateUpload, decodeImage };
+if (typeof module !== 'undefined') module.exports = { uploadConfig, validateUpload, decodeImage };
 
 if (typeof document !== 'undefined') {
   const $ = (id) => document.getElementById(id);
-  const state = { mode: 'crypt', method: 'lsb', file: null, sourceUrl: null, resultUrl: null, busy: false };
-  const controls = [...$('workspace').querySelectorAll('button, input, select, textarea')];
+  const state = { mode: 'crypt', method: '', methods: [], loading: true, file: null, sourceUrl: null, resultUrl: null, busy: false };
+  const selectedMethod = () => state.methods.find((method) => method.name === state.method);
+  const selectedOperation = () => selectedMethod()?.operations[state.mode === 'crypt' ? 'embed' : 'extract'];
+  const optionControls = new Map();
 
   function setPhase(phase) {
     const split = state.mode === 'crypt' && ['processing', 'success'].includes(phase);
@@ -52,13 +45,18 @@ if (typeof document !== 'undefined') {
     $('workspace').classList.toggle('split', split);
     $('transferConnector').dataset.motion = phase === 'processing' ? 'animated' : 'static';
     $('resultPanel').dataset.view = phase === 'success' ? 'ready' : 'loading';
+    $('resultStatus').hidden = phase !== 'processing';
     $('resultPanel').setAttribute('aria-hidden', String(!split));
     $('resultPanel').inert = !split;
   }
 
   function updateControls() {
-    controls.forEach((control) => { control.disabled = state.busy; });
-    $('proceedButton').disabled = state.busy || !METHODS[state.method].endpoint;
+    $('workspace').querySelectorAll('button, input, select, textarea').forEach((control) => { control.disabled = state.busy; });
+    $('methodSelect').disabled = state.busy || state.loading || !state.methods.length;
+
+    const operation = selectedOperation();
+    $('proceedButton').disabled = state.busy || state.loading || !operation || Boolean(operation.reason);
+    for (const id of ['fileInput', 'dropzone', 'changeFile']) $(id).disabled = state.busy || !uploadConfig(selectedMethod(), state.mode);
     $('proceedButton').querySelector('span').textContent = state.busy ? 'Processing…' : 'Proceed';
     $('stegForm').setAttribute('aria-busy', String(state.busy));
   }
@@ -79,25 +77,25 @@ if (typeof document !== 'undefined') {
   }
 
   function renderContext() {
-    const method = METHODS[state.method];
-    const config = uploadConfig(state.method, state.mode);
+    const method = selectedMethod();
+    const operation = selectedOperation();
+    const config = uploadConfig(method, state.mode);
     const decrypt = state.mode === 'decrypt';
     $('workspace').dataset.mode = state.mode;
     $('panelTitle').textContent = decrypt ? 'Reveal text from an image' : 'Hide text in an image';
     $('panelDescription').textContent = decrypt
-      ? `Upload a ${config.format} image and reveal its message with ${method.label}.`
-      : `Choose a PNG image and hide your message with ${method.label}.`;
+      ? `Upload an image and reveal its message${method ? ` with ${method.label}` : ''}.`
+      : `Choose an image and hide your message${method ? ` with ${method.label}` : ''}.`;
     $('sectionKicker').textContent = decrypt ? 'Reveal information' : 'Hide information';
     $('messageField').hidden = decrypt;
-    $('keyField').hidden = state.method !== 'f5';
-    $('methodFormat').textContent = decrypt ? `${method.format} → Text` : `PNG → ${method.format}`;
-    $('methodNotice').hidden = Boolean(method.endpoint);
-    $('methodNotice').textContent = method.endpoint ? ''
-      : `${method.label} exists in the Python/CLI code, but has no HTTP endpoint in this backend. Processing is unavailable; no other method will be used instead.`;
-    $('fileInput').accept = config.accept;
-    $('fileStatus').textContent = state.file ? (decrypt ? 'Ready to extract' : 'Ready to encode') : `${config.format} only · Up to 10 MB`;
-    $('fileLabel').textContent = `${config.format} image`;
-    $('dropzoneTitle').textContent = `Drop a ${config.format} image here`;
+    $('methodFormat').textContent = config ? `${config.format} → ${decrypt ? 'Text' : operation?.output?.format || '?'}` : 'Format unavailable';
+    $('methodNotice').hidden = !method || Boolean(operation && !operation.reason);
+    $('methodNotice').textContent = !method ? '' : operation?.reason ||
+      `No ${decrypt ? 'extract' : 'embed'} HTTP route is documented for ${method.label}. Processing is unavailable; no other method will be used instead.`;
+    $('fileInput').accept = config?.accept || '';
+    $('fileStatus').textContent = state.file ? (decrypt ? 'Ready to extract' : 'Ready to encode') : config ? `${config.format} only · Up to 10 MB` : 'Upload unavailable';
+    $('fileLabel').textContent = config ? `${config.format} image` : 'Carrier image';
+    $('dropzoneTitle').textContent = config ? `Drop a ${config.format} image here` : 'Select a method with a supported API contract';
     document.querySelectorAll('.mode-button').forEach((tab) => {
       const active = tab.dataset.mode === state.mode;
       tab.classList.toggle('active', active);
@@ -105,6 +103,100 @@ if (typeof document !== 'undefined') {
       tab.tabIndex = active ? 0 : -1;
     });
     updateControls();
+  }
+
+  function renderOptions() {
+    optionControls.clear();
+    $('methodOptions').replaceChildren();
+    for (const [index, option] of (selectedOperation()?.options || []).entries()) {
+      const { name, schema, required, secret } = option;
+      const block = document.createElement('div');
+      block.className = 'field-block method-option';
+      const row = document.createElement('div');
+      row.className = 'field-label-row';
+      const label = document.createElement('label');
+      label.htmlFor = `method-option-${index}`;
+      label.textContent = schema.title || name;
+      const requirement = document.createElement('span');
+      requirement.textContent = required ? 'Required' : 'Optional';
+      row.append(label, requirement);
+      const choices = schema.enum || (schema.type === 'boolean' ? [true, false] : null);
+      const input = document.createElement(choices && !secret ? 'select' : 'input');
+      input.id = label.htmlFor;
+      input.name = name;
+      input.required = required;
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      if (choices && !secret) {
+        const empty = document.createElement('option');
+        empty.value = '';
+        empty.textContent = required ? 'Choose a value' : 'Use server default';
+        input.append(empty);
+        for (const value of choices) {
+          const item = document.createElement('option');
+          item.value = String(value);
+          item.textContent = String(value);
+          input.append(item);
+        }
+      } else {
+        input.type = secret ? 'password' : ['integer', 'number'].includes(schema.type) ? 'number' : 'text';
+        if (input.type === 'number') {
+          input.step = schema.type === 'integer' ? '1' : 'any';
+          if (schema.minimum !== undefined) input.min = schema.minimum;
+          if (schema.maximum !== undefined) input.max = schema.maximum;
+        }
+      }
+      // Never populate a secret from metadata or persist a user's key.
+      input.value = !secret && schema.default !== undefined ? String(schema.default) : '';
+      if (secret && !required) input.placeholder = 'Leave empty to use the server default';
+      const hint = document.createElement('p');
+      hint.id = `${input.id}-hint`;
+      hint.className = 'field-hint';
+      hint.textContent = schema.description || (secret ? 'Use the same key to hide and reveal.' : `${schema.type} option`);
+      input.setAttribute('aria-describedby', hint.id);
+      input.addEventListener('input', () => { if (!state.busy) { clearResult(); renderContext(); } });
+      input.addEventListener('change', () => { if (!state.busy) { clearResult(); renderContext(); } });
+      optionControls.set(name, input);
+      block.append(row, input, hint);
+      $('methodOptions').append(block);
+    }
+  }
+
+  async function loadMethods() {
+    if (state.busy) return;
+    state.loading = true;
+    clearResult();
+    optionControls.forEach((input) => { input.value = ''; });
+    optionControls.clear();
+    $('methodOptions').replaceChildren();
+    $('registryStatus').textContent = 'Loading methods from the API…';
+    $('registryStatus').hidden = false;
+    updateControls();
+    try {
+      const result = await registry.load();
+      state.methods = result.methods;
+      state.method = state.methods.some((method) => method.name === state.method) ? state.method : state.methods[0]?.name || '';
+      $('methodSelect').replaceChildren();
+      for (const method of state.methods) {
+        const option = document.createElement('option');
+        option.value = method.name;
+        option.textContent = method.label + (Object.keys(method.operations).length ? '' : ' — API unavailable');
+        $('methodSelect').append(option);
+      }
+      $('methodSelect').value = state.method;
+      $('registryStatus').textContent = result.warning || (state.methods.length ? '' : 'The API advertised no methods.');
+    } catch (error) {
+      state.methods = [];
+      state.method = '';
+      $('methodSelect').replaceChildren();
+      $('registryStatus').textContent = error.message || 'Could not load API methods.';
+    } finally {
+      state.loading = false;
+      $('registryStatus').hidden = !$('registryStatus').textContent;
+      renderOptions();
+      if (state.file && validateUpload(state.file, selectedMethod(), state.mode)) removeFile();
+      renderContext();
+    }
   }
 
   function removeFile() {
@@ -125,7 +217,7 @@ if (typeof document !== 'undefined') {
 
   function showFile(file) {
     if (state.busy || !file) return;
-    const error = validateUpload(file, state.method, state.mode);
+    const error = validateUpload(file, selectedMethod(), state.mode);
     if (error) {
       $('fileError').textContent = error;
       $('fileInput').value = '';
@@ -146,19 +238,21 @@ if (typeof document !== 'undefined') {
   function changeContext(mode, method) {
     if (state.busy) return;
     const modeChanged = mode !== state.mode;
-    if (method !== state.method) $('f5Key').value = '';
+    const contextChanged = modeChanged || method !== state.method;
     state.mode = mode;
     state.method = method;
     clearResult();
+    if (contextChanged) renderOptions();
     $('fileError').textContent = '';
-    if (modeChanged || (state.file && validateUpload(state.file, method, mode))) removeFile();
+    if (modeChanged || (state.file && validateUpload(state.file, selectedMethod(), mode))) removeFile();
     renderContext();
   }
 
   async function processImage() {
-    const method = METHODS[state.method];
-    if (state.busy || !method.endpoint) return;
-    const error = validateUpload(state.file, state.method, state.mode);
+    const method = selectedMethod();
+    const operation = selectedOperation();
+    if (state.busy || state.loading || !operation || operation.reason) return;
+    const error = validateUpload(state.file, method, state.mode);
     if (error) {
       $('fileError').textContent = error;
       $('dropzone').focus();
@@ -167,6 +261,14 @@ if (typeof document !== 'undefined') {
     if (state.mode === 'crypt' && !$('secretMessage').value.trim()) {
       $('processMessage').textContent = 'Enter the message you want to hide.';
       $('secretMessage').focus();
+      return;
+    }
+    let options;
+    try {
+      options = registry.optionValues(operation.options, Object.fromEntries([...optionControls].map(([name, input]) => [name, input.value])));
+    } catch (error) {
+      clearResult();
+      $('processMessage').textContent = error.message;
       return;
     }
     clearResult();
@@ -178,23 +280,21 @@ if (typeof document !== 'undefined') {
       const payload = new FormData();
       payload.append('file', state.file);
       if (state.mode === 'crypt') payload.append('text', $('secretMessage').value);
-      if (state.method === 'f5' && $('f5Key').value) payload.append('key', $('f5Key').value);
-      const action = state.mode === 'crypt' ? 'embed' : 'extract';
-      const response = await fetch(`/api/v1/${method.endpoint}/${action}`, {
-        method: 'POST', body: payload, signal: AbortSignal.timeout(120000),
+      options.forEach(([name, value]) => payload.append(name, value));
+      const response = await fetch(operation.endpoint, {
+        method: 'POST', body: payload, signal: AbortSignal.timeout(120000), redirect: 'error',
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.error || `Request failed (${response.status}). Please try again.`);
-      if (!data || data.success !== true) throw new Error('The API returned an invalid response.');
+      if (!data || data.success !== true || data.method !== method.name) throw new Error('The API returned an invalid response.');
       if (state.mode === 'crypt') {
-        const blob = decodeImage(data, state.method);
+        const blob = decodeImage(data, method);
         state.resultUrl = URL.createObjectURL(blob);
         $('resultImage').src = state.resultUrl;
         await $('resultImage').decode();
         $('resultImage').hidden = false;
-        $('resultFileName').textContent = `encoded-${state.file.name.replace(/\.[^.]+$/, '')}.${method.extension}`;
+        $('resultFileName').textContent = `encoded-${state.file.name.replace(/\.[^.]+$/, '')}.${operation.output.extension}`;
         $('resultFooter').hidden = false;
-        $('resultStatus').querySelector('b').textContent = 'Ready';
         $('resultMessage').textContent = '';
         window.ChangeInspector?.prepare({
           file: state.file, encodedBlob: blob, sourceUrl: state.sourceUrl,
@@ -222,6 +322,15 @@ if (typeof document !== 'undefined') {
   }
 
   $('methodSelect').addEventListener('change', () => changeContext(state.mode, $('methodSelect').value));
+
+  $('stegForm').addEventListener('reset', (event) => {
+    event.preventDefault();
+    if (state.busy) return;
+    $('secretMessage').value = '';
+    $('characterCount').textContent = '0';
+    renderOptions();
+    removeFile();
+  });
   const tabs = [...document.querySelectorAll('.mode-button')];
   tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => changeContext(tab.dataset.mode, state.method));
@@ -259,4 +368,5 @@ if (typeof document !== 'undefined') {
   });
   clearResult();
   renderContext();
+  loadMethods();
 }

@@ -10,6 +10,7 @@
     <link rel="apple-touch-icon" href="/icon.png?v=02a338b" />
     <link rel="stylesheet" href="/styles.css?v=inspect1" />
     <link rel="stylesheet" href="/inspector.css?v=inspect6" />
+    <link rel="stylesheet" href="/theme.css?v=registry2" />
   </head>
   <body>
     <div class="ambient ambient-one"></div>
@@ -49,24 +50,14 @@
                 <label for="methodSelect">Method</label>
                 <span id="methodFormat">PNG → PNG</span>
               </div>
-              <select id="methodSelect" aria-describedby="methodNotice">
-                <option value="lsb">LSB</option>
-                <optgroup label="DCT">
-                  <option value="jsteg">JSteg</option>
-                  <option value="jsteg-mf">JSteg-MF</option>
-                  <option value="f5">F5</option>
-                </optgroup>
+              <select id="methodSelect" aria-describedby="registryStatus methodNotice" disabled>
+                <option value="">Loading methods…</option>
               </select>
+              <p class="field-hint" id="registryStatus" role="status">Loading methods from the API…</p>
+
               <p class="method-notice" id="methodNotice" role="status" hidden></p>
             </div>
-            <div class="field-block" id="keyField" hidden>
-              <div class="field-label-row">
-                <label for="f5Key">F5 key</label>
-                <span>Optional</span>
-              </div>
-              <input type="password" id="f5Key" autocomplete="off" spellcheck="false" aria-describedby="keyHint" placeholder="Enter the F5 key" />
-              <p class="field-hint" id="keyHint">Use the same key to hide and reveal. Empty uses the algorithm’s default key.</p>
-            </div>
+            <div class="method-options" id="methodOptions" aria-label="Method options"></div>
             <div class="field-block">
               <div class="field-label-row">
                 <label for="fileInput" id="fileLabel">Carrier file</label>
@@ -125,7 +116,7 @@
             </div>
 
             <p class="process-message" id="processMessage" role="status"></p>
-            <button class="primary-button" id="proceedButton" type="submit">
+            <button class="primary-button" id="proceedButton" type="submit" disabled>
               <span>Proceed</span>
               <svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
             </button>
@@ -143,7 +134,7 @@
               <p class="section-kicker">Encoding result</p>
               <h2 id="resultTitle">Image with a hidden message</h2>
             </div>
-            <span class="result-status" id="resultStatus"><i></i><b>Processing</b></span>
+            <span class="result-status" id="resultStatus" hidden><i></i><b>Processing</b></span>
           </div>
           <div class="result-media" id="resultMedia">
             <div class="processing-orbit" aria-hidden="true"><span></span></div>
@@ -216,6 +207,7 @@
     </main>
 
     <script src="/inspector.js?v=inspect6"></script>
-    <script src="/studio.js?v=inspect1"></script>
+    <script src="/method-registry.js?v=registry1"></script>
+    <script src="/studio.js?v=registry3"></script>
   </body>
 </html>
