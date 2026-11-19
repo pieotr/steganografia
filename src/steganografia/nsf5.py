@@ -143,6 +143,7 @@ def _embed(
     unpack(frame, capacity_bytes=capacity)
 
     bits = _bits(frame)
+    bits.extend([0] * ((-_MESSAGE_BITS - len(bits)) % _MESSAGE_BITS))
     for offset in range(0, len(bits), _MESSAGE_BITS):
         group = groups[offset // _MESSAGE_BITS]
         target = 0
