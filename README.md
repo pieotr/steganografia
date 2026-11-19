@@ -41,6 +41,32 @@ F5 wykorzystuje współczynniki AC wszystkich komponentów JPEG (`Y`, `Cb` i
 `Cr`), kodowanie macierzowe `(3, 2)` oraz obsługę shrinkage, gdy modyfikacja
 współczynnika `+1` lub `-1` tworzy zero.
 
+nsF5 jest wariantem F5 bez shrinkage i używa wet-paper codingu:
+
+```sh
+steganografia nsf5 capacity oryginal.png
+steganografia nsf5 embed oryginal.png wiadomosc.jpg --text "Tajna wiadomość" --key moj-klucz
+steganografia nsf5 extract wiadomosc.jpg --key moj-klucz
+```
+
+Współczynniki `+1` i `-1` pozostają niemodyfikowalne, a syndrom jest
+rozwiązywany przez kombinację pozostałych współczynników w stałych grupach.
+
+OutGuess jest dostępny z opcjonalnym kluczem (domyślnie
+`steganografia-outguess`):
+
+```sh
+steganografia outguess capacity oryginal.png
+steganografia outguess embed oryginal.png wiadomosc.jpg --text "Tajna wiadomość" --key moj-klucz
+steganografia outguess extract wiadomosc.jpg --key moj-klucz
+```
+
+OutGuess wykorzystuje pseudolosową kolejność współczynników AC oraz
+niewykorzystane współczynniki do kompensacji zmian histogramu wartości DCT.
+Raportowana pojemność jest teoretyczną pojemnością ramki; konkretne osadzanie
+może zostać odrzucone, jeśli dla danego klucza i payloadu nie da się wykonać
+korekty histogramu.
+
 ```sh
 steganografia capacity oryginal.png
 steganografia embed oryginal.png wiadomosc.png --text "Zażółć gęślą jaźń"

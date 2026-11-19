@@ -44,6 +44,20 @@ from .f5 import (
     embed_jpeg as f5_embed_jpeg,
     extract_jpeg as f5_extract_jpeg,
 )
+from .outguess import (
+    DEFAULT_KEY as OUTGUESS_DEFAULT_KEY,
+    capacity_from_jpeg as outguess_capacity_from_jpeg,
+    capacity_from_png as outguess_capacity_from_png,
+    embed_jpeg as outguess_embed_jpeg,
+    extract_jpeg as outguess_extract_jpeg,
+)
+from .nsf5 import (
+    DEFAULT_KEY as NSF5_DEFAULT_KEY,
+    capacity_from_jpeg as nsf5_capacity_from_jpeg,
+    capacity_from_png as nsf5_capacity_from_png,
+    embed_jpeg as nsf5_embed_jpeg,
+    extract_jpeg as nsf5_extract_jpeg,
+)
 
 __all__ = [
     "HEADER_SIZE",
@@ -68,6 +82,16 @@ __all__ = [
     "f5_capacity_from_png",
     "f5_embed_jpeg",
     "f5_extract_jpeg",
+    "OUTGUESS_DEFAULT_KEY",
+    "outguess_capacity_from_jpeg",
+    "outguess_capacity_from_png",
+    "outguess_embed_jpeg",
+    "outguess_extract_jpeg",
+    "NSF5_DEFAULT_KEY",
+    "nsf5_capacity_from_jpeg",
+    "nsf5_capacity_from_png",
+    "nsf5_embed_jpeg",
+    "nsf5_extract_jpeg",
     "JpegCoefficients",
     "embed_bits",
     "embed_frame",

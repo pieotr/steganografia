@@ -35,6 +35,20 @@ from .f5 import (
     embed_jpeg as f5_embed_jpeg,
     extract_jpeg as f5_extract_jpeg,
 )
+from .outguess import (
+    DEFAULT_KEY as OUTGUESS_DEFAULT_KEY,
+    capacity_from_jpeg as outguess_capacity_from_jpeg,
+    capacity_from_png as outguess_capacity_from_png,
+    embed_jpeg as outguess_embed_jpeg,
+    extract_jpeg as outguess_extract_jpeg,
+)
+from .nsf5 import (
+    DEFAULT_KEY as NSF5_DEFAULT_KEY,
+    capacity_from_jpeg as nsf5_capacity_from_jpeg,
+    capacity_from_png as nsf5_capacity_from_png,
+    embed_jpeg as nsf5_embed_jpeg,
+    extract_jpeg as nsf5_extract_jpeg,
+)
 
 
 @dataclass(frozen=True)
@@ -223,6 +237,106 @@ class F5Method(SteganographyMethod):
         return unpack(frame, capacity_bytes=total)
 
 
+class OutGuessMethod(SteganographyMethod):
+    name = "outguess"
+    metadata = MethodMetadata(
+        name="outguess",
+        label="OutGuess",
+        input_formats=("png",),
+        output_format="jpeg",
+        options={
+            "key": {
+                "type": "string",
+                "required": False,
+                "default": OUTGUESS_DEFAULT_KEY,
+            }
+        },
+    )
+
+    def capacity(self, image: np.ndarray) -> dict[str, int]:
+        total = outguess_capacity_from_png(image)
+        return {"capacity_bytes": total, "payload_capacity_bytes": max(0, total - 13)}
+
+    def embed(self, image: np.ndarray, payload: str) -> np.ndarray:
+        raise NotImplementedError("Metoda OutGuess używa kontraktu bajtowego")
+
+    def extract(self, image: np.ndarray) -> str:
+        raise NotImplementedError("Metoda OutGuess używa kontraktu bajtowego")
+
+    def capacity_bytes(self, cover: bytes, **options: Any) -> dict[str, int]:
+        key = options.get("key", OUTGUESS_DEFAULT_KEY)
+        image = load_png_from_bytes(cover, mode="cover")
+        total = outguess_capacity_from_png(image, key=key)
+        return {"capacity_bytes": total, "payload_capacity_bytes": max(0, total - 13)}
+
+    def embed_bytes(self, cover: bytes, payload: str, **options: Any) -> EncodedArtifact:
+        key = options.get("key", OUTGUESS_DEFAULT_KEY)
+        image = load_png_from_bytes(cover, mode="cover")
+        total = outguess_capacity_from_png(image, key=key)
+        frame = pack(payload, capacity_bytes=total)
+        with _temporary_file(cover, ".png") as source, _temporary_output(".jpg") as target:
+            outguess_embed_jpeg(source, target, frame, key=key, overwrite=True)
+            data = Path(target).read_bytes()
+        return EncodedArtifact(data, "image/jpeg", ".jpg")
+
+    def extract_bytes(self, encoded: bytes, **options: Any) -> str:
+        key = options.get("key", OUTGUESS_DEFAULT_KEY)
+        with _temporary_file(encoded, ".jpg") as source:
+            frame = outguess_extract_jpeg(source, key=key)
+            total = outguess_capacity_from_jpeg(source, key=key)
+        return unpack(frame, capacity_bytes=total)
+
+
+class NSF5Method(SteganographyMethod):
+    name = "nsf5"
+    metadata = MethodMetadata(
+        name="nsf5",
+        label="nsF5",
+        input_formats=("png",),
+        output_format="jpeg",
+        options={
+            "key": {
+                "type": "string",
+                "required": False,
+                "default": NSF5_DEFAULT_KEY,
+            }
+        },
+    )
+
+    def capacity(self, image: np.ndarray) -> dict[str, int]:
+        total = nsf5_capacity_from_png(image)
+        return {"capacity_bytes": total, "payload_capacity_bytes": max(0, total - 13)}
+
+    def embed(self, image: np.ndarray, payload: str) -> np.ndarray:
+        raise NotImplementedError("Metoda nsF5 używa kontraktu bajtowego")
+
+    def extract(self, image: np.ndarray) -> str:
+        raise NotImplementedError("Metoda nsF5 używa kontraktu bajtowego")
+
+    def capacity_bytes(self, cover: bytes, **options: Any) -> dict[str, int]:
+        key = options.get("key", NSF5_DEFAULT_KEY)
+        image = load_png_from_bytes(cover, mode="cover")
+        total = nsf5_capacity_from_png(image, key=key)
+        return {"capacity_bytes": total, "payload_capacity_bytes": max(0, total - 13)}
+
+    def embed_bytes(self, cover: bytes, payload: str, **options: Any) -> EncodedArtifact:
+        key = options.get("key", NSF5_DEFAULT_KEY)
+        image = load_png_from_bytes(cover, mode="cover")
+        total = nsf5_capacity_from_png(image, key=key)
+        frame = pack(payload, capacity_bytes=total)
+        with _temporary_file(cover, ".png") as source, _temporary_output(".jpg") as target:
+            nsf5_embed_jpeg(source, target, frame, key=key, overwrite=True)
+            data = Path(target).read_bytes()
+        return EncodedArtifact(data, "image/jpeg", ".jpg")
+
+    def extract_bytes(self, encoded: bytes, **options: Any) -> str:
+        key = options.get("key", NSF5_DEFAULT_KEY)
+        with _temporary_file(encoded, ".jpg") as source:
+            frame = nsf5_extract_jpeg(source, key=key)
+            total = nsf5_capacity_from_jpeg(source, key=key)
+        return unpack(frame, capacity_bytes=total)
+
+
 class SteganographyRegistry:
     """Rejestr metod. Struktura ta jest przygotowana pod DCT i kolejne algorytmy."""
 
@@ -260,6 +374,8 @@ METHOD_REGISTRY.register(DCTMethod())
 METHOD_REGISTRY.register(JStegMethod())
 METHOD_REGISTRY.register(JStegMFMethod())
 METHOD_REGISTRY.register(F5Method())
+METHOD_REGISTRY.register(OutGuessMethod())
+METHOD_REGISTRY.register(NSF5Method())
 
 
 class _TemporaryPath:
@@ -374,6 +490,8 @@ __all__ = [
     "JStegMethod",
     "JStegMFMethod",
     "F5Method",
+    "OutGuessMethod",
+    "NSF5Method",
     "MethodMetadata",
     "EncodedArtifact",
     "MethodNotFoundError",
