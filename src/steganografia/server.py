@@ -1,4 +1,4 @@
-"""Flask API dla steganografii metodami LSB i DCT.
+"""Dynamiczne Flask API dla wszystkich metod z METHOD_REGISTRY.
 
 Dostępne endpointy:
 - /api/v1/health
@@ -22,18 +22,15 @@ from __future__ import annotations
 
 import argparse
 import base64
-import json
 import os
 from pathlib import Path
-from typing import Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union
 
 from flask import Flask, jsonify, request, send_from_directory
 from werkzeug.exceptions import BadRequest
 
 from .api import (
     METHOD_REGISTRY,
-    image_to_base64,
-    load_png_from_bytes,
     read_jpeg_bytes,
     read_png_bytes,
 )
@@ -58,210 +55,87 @@ def _resolve_frontend_dir() -> Path:
 FRONTEND_DIR = _resolve_frontend_dir()
 
 
-OPENAPI_SPEC = {
-    "openapi": "3.0.3",
-    "info": {
-        "title": "Steganografia API",
-        "version": "1.0.0",
-        "description": (
-            "API do ukrywania i odczytu danych w obrazach PNG z użyciem "
-            "metod LSB i DCT. DCT zwraca wynik w formacie JPEG."
-        ),
-    },
-    "servers": [{"url": "/api/v1", "description": "Wewnętrzny serwer API"}],
-    "paths": {
+def build_openapi_spec() -> dict[str, Any]:
+    """Generuj specyfikację OpenAPI bezpośrednio z METHOD_REGISTRY."""
+    paths: dict[str, Any] = {
         "/health": {
             "get": {
                 "summary": "Stan serwera",
                 "responses": {"200": {"description": "Serwer działa"}},
             }
-        },
-        "/lsb/capacity": {
-            "post": {
-                "summary": "Pojemność obrazu dla LSB",
-                "requestBody": {
-                    "required": True,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "file": {"type": "string", "format": "binary"},
-                                },
-                                "required": ["file"],
-                            }
-                        }
-                    },
-                },
-                "responses": {"200": {"description": "Prawidłowa odpowiedź"}},
-            }
-        },
-        "/lsb/embed": {
-            "post": {
-                "summary": "Osadź tekst w obrazie LSB",
-                "requestBody": {
-                    "required": True,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "file": {"type": "string", "format": "binary"},
-                                    "text": {"type": "string", "description": "Tekst UTF-8 do ukrycia"},
-                                },
-                                "required": ["file", "text"],
-                            }
-                        }
-                    },
-                },
-                "responses": {"200": {"description": "Obraz z ukrytym tekstem"}},
-            }
-        },
-        "/lsb/extract": {
-            "post": {
-                "summary": "Odczytaj tekst z obrazu LSB",
-                "requestBody": {
-                    "required": True,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "file": {"type": "string", "format": "binary"},
-                                },
-                                "required": ["file"],
-                            }
-                        }
-                    },
-                },
-                "responses": {"200": {"description": "Tekst odzyskany z obrazu"}},
-            }
-        },
-        "/dct/capacity": {
-            "post": {
-                "summary": "Pojemność obrazu dla DCT",
-                "requestBody": {
-                    "required": True,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "file": {"type": "string", "format": "binary"},
-                                },
-                                "required": ["file"],
-                            }
-                        }
-                    },
-                },
-                "responses": {"200": {"description": "Prawidłowa odpowiedź"}},
-            }
-        },
-        "/dct/embed": {
-            "post": {
-                "summary": "Osadź tekst w obrazie metodą DCT",
-                "requestBody": {
-                    "required": True,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "file": {"type": "string", "format": "binary"},
-                                    "text": {"type": "string", "description": "Tekst UTF-8 do ukrycia"},
-                                },
-                                "required": ["file", "text"],
-                            }
-                        }
-                    },
-                },
-                "responses": {"200": {"description": "Obraz JPEG z ukrytym tekstem"}},
-            }
-        },
-        "/dct/extract": {
-            "post": {
-                "summary": "Odczytaj tekst z obrazu DCT",
-                "requestBody": {
-                    "required": True,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "file": {"type": "string", "format": "binary"},
-                                },
-                                "required": ["file"],
-                            }
-                        }
-                    },
-                },
-                "responses": {"200": {"description": "Tekst odzyskany z obrazu JPEG"}},
-            }
-        },
-    },
-}
+        }
+    }
 
-for _method_name, _method_label, _key_option in (
-    ("jsteg-mf", "JSteg-MF", False),
-    ("f5", "F5", True),
-):
-    _options = {
-        "key": {"type": "string", "description": "Klucz F5", "default": "steganografia-f5"}
-    } if _key_option else {}
-    OPENAPI_SPEC["paths"].update({
-        f"/{_method_name}/capacity": {
-            "post": {
-                "summary": f"Pojemność obrazu dla {_method_label}",
-                "requestBody": {
-                    "required": True,
-                    "content": {"multipart/form-data": {"schema": {
-                        "type": "object",
-                        "properties": {
-                            "file": {"type": "string", "format": "binary"},
-                            **_options,
-                        },
-                        "required": ["file"],
-                    }}},
-                },
-                "responses": {"200": {"description": "Prawidłowa odpowiedź"}},
+    for name in METHOD_REGISTRY.names():
+        metadata = METHOD_REGISTRY.get(name).metadata
+        label = metadata.label
+        input_format = metadata.input_formats[0] if metadata.input_formats else "png"
+        output_format = metadata.output_format
+
+        option_properties: dict[str, Any] = {}
+        for option_name, option in metadata.options.items():
+            option_properties[option_name] = {
+                "type": option.get("type", "string"),
+                "default": option.get("default"),
             }
-        },
-        f"/{_method_name}/embed": {
-            "post": {
-                "summary": f"Osadź tekst metodą {_method_label}",
-                "requestBody": {
-                    "required": True,
-                    "content": {"multipart/form-data": {"schema": {
-                        "type": "object",
-                        "properties": {
-                            "file": {"type": "string", "format": "binary"},
-                            "text": {"type": "string"},
-                            **_options,
-                        },
-                        "required": ["file", "text"],
-                    }}},
-                },
-                "responses": {"200": {"description": "Obraz JPEG z ukrytym tekstem"}},
+
+        base_file_properties = {
+            "file": {
+                "type": "string",
+                "format": "binary",
+                "description": f"Obraz wejściowy {input_format.upper()}",
             }
-        },
-        f"/{_method_name}/extract": {
-            "post": {
-                "summary": f"Odczytaj tekst metodą {_method_label}",
-                "requestBody": {
-                    "required": True,
-                    "content": {"multipart/form-data": {"schema": {
-                        "type": "object",
-                        "properties": {
-                            "file": {"type": "string", "format": "binary"},
-                            **_options,
+        }
+
+        for operation in ("capacity", "embed", "extract"):
+            properties = dict(base_file_properties)
+            if operation == "embed":
+                properties["text"] = {
+                    "type": "string",
+                    "description": "Tekst UTF-8 do ukrycia",
+                }
+            properties.update(option_properties)
+            required = ["file", "text"] if operation == "embed" else ["file"]
+
+            if operation == "capacity":
+                summary = f"Pojemność obrazu dla {label}"
+                response_description = "Pojemność w bajtach"
+            elif operation == "embed":
+                summary = f"Osadź tekst metodą {label}"
+                response_description = f"Obraz {output_format.upper()} zakodowany w base64"
+            else:
+                summary = f"Odczytaj tekst metodą {label}"
+                response_description = "Tekst odzyskany z obrazu"
+
+            paths[f"/{name}/{operation}"] = {
+                "post": {
+                    "summary": summary,
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "multipart/form-data": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": properties,
+                                    "required": required,
+                                }
+                            }
                         },
-                        "required": ["file"],
-                    }}},
-                },
-                "responses": {"200": {"description": "Tekst odzyskany z obrazu JPEG"}},
+                    },
+                    "responses": {"200": {"description": response_description}},
+                }
             }
+
+    return {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Steganografia API",
+            "version": "1.0.0",
+            "description": "Dynamiczne API steganografii generowane z METHOD_REGISTRY.",
         },
-    })
+        "servers": [{"url": "/api/v1", "description": "Wewnętrzny serwer API"}],
+        "paths": paths,
+    }
 
 
 def _json_error(message: str, status_code: int = 400):
@@ -306,7 +180,7 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
 
     @app.get("/api/v1/openapi.json")
     def openapi_json():
-        return jsonify(OPENAPI_SPEC)
+        return jsonify(build_openapi_spec())
 
     @app.get("/api/v1/swagger")
     def swagger_ui():
@@ -340,186 +214,64 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
         """
         return html
 
-    @app.post("/api/v1/lsb/capacity")
-    def lsb_capacity():
-        uploaded_file = request.files.get("file")
-        if uploaded_file is None:
-            raise BadRequest("Brakuje pola 'file'.")
+    def _method_options(method) -> dict[str, Any]:
+        options: dict[str, Any] = {}
+        for option_name, option in method.metadata.options.items():
+            value = request.form.get(option_name)
+            if value is not None:
+                options[option_name] = value
+        return options
 
-        image = load_png_from_bytes(read_png_bytes(uploaded_file), mode="cover")
-        method = _resolve_method("lsb")
-        stats = method.capacity(image)
-        return jsonify({
-            "method": "lsb",
-            "format": "PNG",
-            "capacity_bytes": stats["capacity_bytes"],
-            "payload_capacity_bytes": stats["payload_capacity_bytes"],
-            "image_shape": list(image.shape),
-        })
+    def _register_method_routes(method_name: str) -> None:
+        method = _resolve_method(method_name)
 
-    @app.post("/api/v1/lsb/embed")
-    def lsb_embed():
-        uploaded_file = request.files.get("file")
-        if uploaded_file is None:
-            raise BadRequest("Brakuje pola 'file'.")
-        text = request.form.get("text")
-        if text is None:
-            raise BadRequest("Brakuje pola 'text'.")
+        @app.post(f"/api/v1/{method_name}/capacity", endpoint=f"{method_name}_capacity")
+        def capacity(method=method, method_name=method_name):
+            cover = read_png_bytes(request.files.get("file"))
+            stats = method.capacity_bytes(cover, **_method_options(method))
+            return jsonify({
+                "method": method_name,
+                "format": "PNG",
+                "output_format": method.metadata.output_format.upper(),
+                "capacity_bytes": stats["capacity_bytes"],
+                "payload_capacity_bytes": stats["payload_capacity_bytes"],
+            })
 
-        image = load_png_from_bytes(read_png_bytes(uploaded_file), mode="cover")
-        method = _resolve_method("lsb")
-        encoded = method.embed(image, text)
-        return jsonify({
-            "success": True,
-            "method": "lsb",
-            "format": "PNG",
-            "image_base64": image_to_base64(encoded),
-            "image_shape": list(encoded.shape),
-            "payload_length_chars": len(text),
-        })
+        @app.post(f"/api/v1/{method_name}/embed", endpoint=f"{method_name}_embed")
+        def embed(method=method, method_name=method_name):
+            text = request.form.get("text")
+            if text is None:
+                raise BadRequest("Brakuje pola 'text'.")
+            cover = read_png_bytes(request.files.get("file"))
+            encoded = method.embed_bytes(cover, text, **_method_options(method))
+            return jsonify({
+                "success": True,
+                "method": method_name,
+                "format": encoded.extension.lstrip(".").upper(),
+                "image_base64": base64.b64encode(encoded.data).decode("ascii"),
+                "payload_length_chars": len(text),
+            })
 
-    @app.post("/api/v1/lsb/extract")
-    def lsb_extract():
-        uploaded_file = request.files.get("file")
-        if uploaded_file is None:
-            raise BadRequest("Brakuje pola 'file'.")
+        @app.post(f"/api/v1/{method_name}/extract", endpoint=f"{method_name}_extract")
+        def extract(method=method, method_name=method_name):
+            uploaded_file = request.files.get("file")
+            if uploaded_file is None:
+                raise BadRequest("Brakuje pola 'file'.")
+            if method.metadata.output_format == "png":
+                encoded = read_png_bytes(uploaded_file)
+            else:
+                encoded = read_jpeg_bytes(uploaded_file)
+            text = method.extract_bytes(encoded, **_method_options(method))
+            return jsonify({
+                "success": True,
+                "method": method_name,
+                "text": text,
+                "length_chars": len(text),
+                "encoding": "utf-8",
+            })
 
-        image = load_png_from_bytes(read_png_bytes(uploaded_file), mode="stego")
-        method = _resolve_method("lsb")
-        text = method.extract(image)
-        return jsonify({
-            "success": True,
-            "method": "lsb",
-            "text": text,
-            "length_chars": len(text),
-            "encoding": "utf-8",
-        })
-
-    @app.post("/api/v1/dct/capacity")
-    def dct_capacity():
-        uploaded_file = request.files.get("file")
-        cover = read_png_bytes(uploaded_file)
-        method = _resolve_method("dct")
-        stats = method.capacity_bytes(cover)
-        return jsonify({
-            "method": "dct",
-            "format": "PNG",
-            "output_format": "JPEG",
-            "capacity_bytes": stats["capacity_bytes"],
-            "payload_capacity_bytes": stats["payload_capacity_bytes"],
-        })
-
-    @app.post("/api/v1/dct/embed")
-    def dct_embed():
-        uploaded_file = request.files.get("file")
-        text = request.form.get("text")
-        if text is None:
-            raise BadRequest("Brakuje pola 'text'.")
-
-        cover = read_png_bytes(uploaded_file)
-        encoded = _resolve_method("dct").embed_bytes(cover, text)
-        return jsonify({
-            "success": True,
-            "method": "dct",
-            "format": "JPEG",
-            "image_base64": base64.b64encode(encoded.data).decode("ascii"),
-            "payload_length_chars": len(text),
-        })
-
-    @app.post("/api/v1/dct/extract")
-    def dct_extract():
-        uploaded_file = request.files.get("file")
-        encoded = read_jpeg_bytes(uploaded_file)
-        text = _resolve_method("dct").extract_bytes(encoded)
-        return jsonify({
-            "success": True,
-            "method": "dct",
-            "text": text,
-            "length_chars": len(text),
-            "encoding": "utf-8",
-        })
-
-    @app.post("/api/v1/jsteg-mf/capacity")
-    def jsteg_mf_capacity():
-        cover = read_png_bytes(request.files.get("file"))
-        stats = _resolve_method("jsteg-mf").capacity_bytes(cover)
-        return jsonify({
-            "method": "jsteg-mf",
-            "format": "PNG",
-            "output_format": "JPEG",
-            "capacity_bytes": stats["capacity_bytes"],
-            "payload_capacity_bytes": stats["payload_capacity_bytes"],
-        })
-
-    @app.post("/api/v1/jsteg-mf/embed")
-    def jsteg_mf_embed():
-        cover = read_png_bytes(request.files.get("file"))
-        text = request.form.get("text")
-        if text is None:
-            raise BadRequest("Brakuje pola 'text'.")
-        encoded = _resolve_method("jsteg-mf").embed_bytes(cover, text)
-        return jsonify({
-            "success": True,
-            "method": "jsteg-mf",
-            "format": "JPEG",
-            "image_base64": base64.b64encode(encoded.data).decode("ascii"),
-            "payload_length_chars": len(text),
-        })
-
-    @app.post("/api/v1/jsteg-mf/extract")
-    def jsteg_mf_extract():
-        encoded = read_jpeg_bytes(request.files.get("file"))
-        text = _resolve_method("jsteg-mf").extract_bytes(encoded)
-        return jsonify({
-            "success": True,
-            "method": "jsteg-mf",
-            "text": text,
-            "length_chars": len(text),
-            "encoding": "utf-8",
-        })
-
-    @app.post("/api/v1/f5/capacity")
-    def f5_capacity():
-        cover = read_png_bytes(request.files.get("file"))
-        stats = _resolve_method("f5").capacity_bytes(cover)
-        return jsonify({
-            "method": "f5",
-            "format": "PNG",
-            "output_format": "JPEG",
-            "capacity_bytes": stats["capacity_bytes"],
-            "payload_capacity_bytes": stats["payload_capacity_bytes"],
-        })
-
-    @app.post("/api/v1/f5/embed")
-    def f5_embed():
-        cover = read_png_bytes(request.files.get("file"))
-        text = request.form.get("text")
-        if text is None:
-            raise BadRequest("Brakuje pola 'text'.")
-        key = request.form.get("key")
-        options = {"key": key} if key else {}
-        encoded = _resolve_method("f5").embed_bytes(cover, text, **options)
-        return jsonify({
-            "success": True,
-            "method": "f5",
-            "format": "JPEG",
-            "image_base64": base64.b64encode(encoded.data).decode("ascii"),
-            "payload_length_chars": len(text),
-        })
-
-    @app.post("/api/v1/f5/extract")
-    def f5_extract():
-        encoded = read_jpeg_bytes(request.files.get("file"))
-        key = request.form.get("key")
-        options = {"key": key} if key else {}
-        text = _resolve_method("f5").extract_bytes(encoded, **options)
-        return jsonify({
-            "success": True,
-            "method": "f5",
-            "text": text,
-            "length_chars": len(text),
-            "encoding": "utf-8",
-        })
+    for registered_method_name in METHOD_REGISTRY.names():
+        _register_method_routes(registered_method_name)
 
     return app
 

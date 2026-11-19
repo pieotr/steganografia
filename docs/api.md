@@ -1,6 +1,6 @@
 # API Flask dla steganografii
 
-Serwer Flask jest przygotowany do pracy z frontendem i obsługuje metody LSB, DCT, JSteg-MF oraz F5. Metody JPEG wykonują osadzanie w skwantyzowanych współczynnikach AC i zwracają wynikowy obraz JPEG.
+Serwer Flask jest przygotowany do pracy z frontendem i generuje routy HTTP oraz dokumentację OpenAPI bezpośrednio z `METHOD_REGISTRY`. Obecnie dostępne są metody LSB, DCT, JSteg, JSteg-MF, F5, OutGuess i nsF5. Metody JPEG wykonują osadzanie w skwantyzowanych współczynnikach AC i zwracają wynikowy obraz JPEG.
 
 ## Uruchomienie
 
@@ -157,6 +157,14 @@ Endpointy JSteg-MF mają ten sam format żądań i odpowiedzi co endpointy DCT, 
 ### POST /api/v1/f5/{capacity,embed,extract}
 
 Endpointy F5 mają ten sam format co endpointy metod JPEG. Endpointy `embed` i `extract` przyjmują opcjonalne pole formularza `key`; jego brak oznacza domyślny klucz `steganografia-f5`.
+
+### POST /api/v1/outguess/{capacity,embed,extract}
+
+Endpointy OutGuess mają format metod JPEG i przyjmują opcjonalne pole formularza `key`.
+
+### POST /api/v1/nsf5/{capacity,embed,extract}
+
+Endpointy nsF5 mają format metod JPEG i przyjmują opcjonalne pole formularza `key`.
 
 ## Architektura rozszerzalna
 
