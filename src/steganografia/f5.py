@@ -67,10 +67,15 @@ def _set_coefficient(
     components[component][block][position] = value
 
 
+def _coefficient_bit(value: int) -> int:
+    """Bit współczynnika jak w F5: dla ujemnych parzystość jest odwrócona."""
+    return value & 1 if value > 0 else 1 - (abs(value) & 1)
+
+
 def _syndrome(values: list[int]) -> int:
     result = 0
     for index, value in enumerate(values, 1):
-        if abs(value) & 1:
+        if value != 0 and _coefficient_bit(value):
             result ^= index
     return result
 

@@ -14,8 +14,8 @@ steganografia jsteg embed oryginal.png wiadomosc.jpg --text "Tajna wiadomość"
 steganografia jsteg extract wiadomosc.jpg
 ```
 
-JSteg modyfikuje parzystość niezerowych współczynników AC luminancji po
-kwantyzacji. Wynik jest zapisywany jako JPEG bezpośrednio ze zmodyfikowanych,
+JSteg modyfikuje parzystość niezerowych współczynników AC luminancji
+i chrominancji (Y, Cb, Cr) po kwantyzacji. Wynik jest zapisywany jako JPEG bezpośrednio ze zmodyfikowanych,
 skwantyzowanych współczynników DCT. Ekstrakcja odczytuje te współczynniki
 z pliku JPEG i nie wykonuje pośredniej rekonstrukcji RGB.
 

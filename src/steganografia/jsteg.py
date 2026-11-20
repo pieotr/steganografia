@@ -1,4 +1,4 @@
-"""Minimalne osadzanie JSteg w skwantyzowanych współczynnikach luminancji."""
+"""Minimalne osadzanie JSteg w skwantyzowanych współczynnikach Y, Cb i Cr."""
 
 from pathlib import Path
 
@@ -103,18 +103,31 @@ def _extract_coefficients(
     return frame
 
 
+def _all_blocks(
+    y_blocks: list[np.ndarray],
+    cb_blocks: list[np.ndarray],
+    cr_blocks: list[np.ndarray],
+) -> list[np.ndarray]:
+    """Połącz bloki luminancji i chrominancji; tablice pozostają współdzielone."""
+    return [*y_blocks, *cb_blocks, *cr_blocks]
+
+
+def _position_range(mf: bool) -> dict[str, int | bool]:
+    if mf:
+        return {"first_position": 5, "last_position": 40, "skip_unit_coefficients": True}
+    return {"first_position": 1, "last_position": 63, "skip_unit_coefficients": False}
+
+
 def jpeg_capacity_bytes(path: str, *, mf: bool = False) -> int:
     coefficients = read_jpeg(path)
-    if mf:
-        return len(_jpeg_positions(coefficients.y_blocks, first_position=5, last_position=40, skip_unit_coefficients=True)) // 8
-    return len(_jpeg_positions(coefficients.y_blocks, first_position=1, last_position=63, skip_unit_coefficients=False)) // 8
+    blocks = _all_blocks(coefficients.y_blocks, coefficients.cb_blocks, coefficients.cr_blocks)
+    return len(_jpeg_positions(blocks, **_position_range(mf))) // 8
 
 
 def png_jpeg_capacity_bytes(image: np.ndarray, *, mf: bool = False) -> int:
-    _, _, y_blocks, _, _ = _jpeg_blocks(image)
-    if mf:
-        return len(_jpeg_positions(y_blocks, first_position=5, last_position=40, skip_unit_coefficients=True)) // 8
-    return len(_jpeg_positions(y_blocks, first_position=1, last_position=63, skip_unit_coefficients=False)) // 8
+    _, _, y_blocks, cb_blocks, cr_blocks = _jpeg_blocks(image)
+    blocks = _all_blocks(y_blocks, cb_blocks, cr_blocks)
+    return len(_jpeg_positions(blocks, **_position_range(mf))) // 8
 
 
 def embed_jpeg(
@@ -127,16 +140,9 @@ def embed_jpeg(
 ) -> None:
     image = load_cover(input_path)
     width, height, y_blocks, cb_blocks, cr_blocks = _jpeg_blocks(image)
-    if mf:
-        capacity = _embed_coefficients(
-            y_blocks, frame, first_position=5, last_position=40,
-            skip_unit_coefficients=True,
-        )
-    else:
-        capacity = _embed_coefficients(
-            y_blocks, frame, first_position=1, last_position=63,
-            skip_unit_coefficients=False,
-        )
+    _embed_coefficients(
+        _all_blocks(y_blocks, cb_blocks, cr_blocks), frame, **_position_range(mf)
+    )
     target = Path(output_path)
     if target.exists() and not overwrite:
         raise ImageError(f"Plik '{target}' już istnieje; wybierz inną nazwę lub --overwrite")
@@ -145,14 +151,9 @@ def embed_jpeg(
 
 def extract_jpeg(path: str, *, mf: bool = False) -> bytes:
     coefficients = read_jpeg(path)
-    if mf:
-        return _extract_coefficients(
-            coefficients.y_blocks, first_position=5, last_position=40,
-            skip_unit_coefficients=True,
-        )
     return _extract_coefficients(
-        coefficients.y_blocks, first_position=1, last_position=63,
-        skip_unit_coefficients=False,
+        _all_blocks(coefficients.y_blocks, coefficients.cb_blocks, coefficients.cr_blocks),
+        **_position_range(mf),
     )
 
 
