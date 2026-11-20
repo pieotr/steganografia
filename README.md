@@ -100,7 +100,7 @@ Kod zakończenia: `0` — sukces, `1` — błąd danych lub pliku,
 ## API Flask
 
 Dla frontendowca w projekcie jest dostępny też serwer Flask z endpointami dla
-LSB i DCT.
+LSB i metod JPEG (JSteg, JSteg-MF, F5, OutGuess, nsF5).
 
 Uruchomienie:
 
@@ -127,9 +127,9 @@ Najważniejsze endpointy:
 - `POST /api/v1/lsb/capacity` — pojemność obrazu PNG,
 - `POST /api/v1/lsb/embed` — osadzenie tekstu w PNG,
 - `POST /api/v1/lsb/extract` — odczyt tekstu z PNG,
-- `POST /api/v1/dct/capacity` — pojemność PNG dla DCT,
-- `POST /api/v1/dct/embed` — osadzenie tekstu w PNG i wynikowy JPEG,
-- `POST /api/v1/dct/extract` — odczyt tekstu z JPEG.
+- `POST /api/v1/jsteg/capacity` — pojemność PNG dla JSteg,
+- `POST /api/v1/jsteg/embed` — osadzenie tekstu w PNG i wynikowy JPEG,
+- `POST /api/v1/jsteg/extract` — odczyt tekstu z JPEG.
 
 Przykład `curl`:
 

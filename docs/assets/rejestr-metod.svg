@@ -27,7 +27,7 @@
   <g filter="url(#shadow)">
     <rect x="55" y="150" width="280" height="130" rx="18" fill="url(#card)"/>
     <text x="195" y="188" text-anchor="middle" fill="#172b4d" font-family="Arial" font-size="21" font-weight="700">Implementacja metody</text>
-    <text x="195" y="224" text-anchor="middle" fill="#44546a" font-family="Arial" font-size="16">LSB / DCT / JSteg / F5</text>
+    <text x="195" y="224" text-anchor="middle" fill="#44546a" font-family="Arial" font-size="16">LSB / JSteg / JSteg-MF / F5</text>
     <text x="195" y="250" text-anchor="middle" fill="#44546a" font-family="Arial" font-size="16">OutGuess / nsF5 ...</text>
   </g>
 

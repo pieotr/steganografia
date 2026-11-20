@@ -13,7 +13,7 @@ const MethodRegistry = (() => {
   };
   // Compatibility information verified in baseline 53897ef and upstream
   // f19b1c8 server.py; this does not determine the discovered method list.
-  const legacyOutput = { lsb: 'PNG', dct: 'JPEG', 'jsteg-mf': 'JPEG', f5: 'JPEG' };
+  const legacyOutput = { lsb: 'PNG', jsteg: 'JPEG', 'jsteg-mf': 'JPEG', f5: 'JPEG' };
   const secretOption = (name, schema) => /key|password|secret|token/i.test(name) || schema.format === 'password' || schema.writeOnly === true;
 
   function resolve(document, value) {
@@ -65,7 +65,7 @@ const MethodRegistry = (() => {
       options.push({ name: key, schema: field, required: required.includes(key), secret: secretOption(key, field) });
     }
     if (required.some((key) => !own(properties || {}, key))) reason = 'The API required fields are not fully documented.';
-    // Optional future OpenAPI extension, NOT current backend metadata:
+    // OpenAPI extension published by the backend for every method operation:
     // operation["x-steganography"] = {input_format:"PNG",output_format:"JPEG"}.
     // Unknown methods fail closed without an explicit supported format contract.
     const metadata = post['x-steganography'];

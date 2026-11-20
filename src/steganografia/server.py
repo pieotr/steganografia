@@ -5,9 +5,9 @@ Dostępne endpointy:
 - /api/v1/lsb/capacity
 - /api/v1/lsb/embed
 - /api/v1/lsb/extract
-- /api/v1/dct/capacity
-- /api/v1/dct/embed
-- /api/v1/dct/extract
+- /api/v1/jsteg/capacity
+- /api/v1/jsteg/embed
+- /api/v1/jsteg/extract
 - /api/v1/jsteg-mf/capacity
 - /api/v1/jsteg-mf/embed
 - /api/v1/jsteg-mf/extract
@@ -242,9 +242,18 @@ def build_openapi_spec() -> dict[str, Any]:
                     "required": ["success", "method", "text", "length_chars", "encoding"],
                 }
 
+            # Formaty obrazów dla frontendu: embed/capacity przyjmują format
+            # wejściowy metody, extract przyjmuje jej format wynikowy.
+            operation_input = (
+                output_format if operation == "extract" else (input_formats[0] if input_formats else output_format)
+            )
             paths[f"/{name}/{operation}"] = {
                 "post": {
                     "summary": summary,
+                    "x-steganography": {
+                        "input_format": operation_input.upper(),
+                        "output_format": output_format.upper(),
+                    },
                     "requestBody": {
                         "required": True,
                         "content": {
@@ -446,7 +455,7 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
             return jsonify({
                 "success": True,
                 "method": method_name,
-                "format": encoded.extension.lstrip(".").upper(),
+                "format": output_format.upper(),
                 "image_base64": base64.b64encode(encoded.data).decode("ascii"),
                 "payload_length_chars": len(text),
             })

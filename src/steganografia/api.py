@@ -183,15 +183,6 @@ class JStegMethod(_JpegMethod):
     )
 
 
-class DCTMethod(JStegMethod):
-    """Metoda DCT osadzająca dane w niezerowych współczynnikach AC luminancji."""
-
-    name = "dct"
-    metadata = MethodMetadata(
-        name="dct", label="DCT", input_formats=("png",), output_format="jpeg", options={}
-    )
-
-
 class JStegMFMethod(_JpegMethod):
     name = "jsteg-mf"
     mf = True
@@ -370,7 +361,6 @@ class SteganographyRegistry:
 
 METHOD_REGISTRY = SteganographyRegistry()
 METHOD_REGISTRY.register(LSBMethod())
-METHOD_REGISTRY.register(DCTMethod())
 METHOD_REGISTRY.register(JStegMethod())
 METHOD_REGISTRY.register(JStegMFMethod())
 METHOD_REGISTRY.register(F5Method())
@@ -486,7 +476,6 @@ def image_to_base64(image: np.ndarray) -> str:
 
 __all__ = [
     "LSBMethod",
-    "DCTMethod",
     "JStegMethod",
     "JStegMFMethod",
     "F5Method",

@@ -11,7 +11,6 @@ from steganografia.api import (
     METHOD_REGISTRY,
     SteganographyRegistry,
     LSBMethod,
-    DCTMethod,
     JStegMethod,
     JStegMFMethod,
     F5Method,
@@ -34,19 +33,19 @@ def _fresh_registry() -> SteganographyRegistry:
     """Symuluje czystą instancję aplikacji po restarcie (brak stanu poprzedniej sesji)."""
     reg = SteganographyRegistry()
     reg.register(LSBMethod())
-    reg.register(DCTMethod())
     reg.register(JStegMethod())
     reg.register(JStegMFMethod())
     reg.register(F5Method())
     return reg
 
 
-def test_metoda_dct_w_rejestrze_i_read_jpeg_bytes(cover_png):
-    assert "dct" in METHOD_REGISTRY.names()
-    dct = METHOD_REGISTRY.get("dct")
-    artifact = dct.embed_bytes(cover_png.read_bytes(), TEKST_PL)
+def test_metoda_jsteg_w_rejestrze_i_read_jpeg_bytes(cover_png):
+    assert "jsteg" in METHOD_REGISTRY.names()
+    assert "dct" not in METHOD_REGISTRY.names()
+    jsteg = METHOD_REGISTRY.get("jsteg")
+    artifact = jsteg.embed_bytes(cover_png.read_bytes(), TEKST_PL)
     assert artifact.extension == ".jpg"
-    assert dct.extract_bytes(artifact.data) == TEKST_PL
+    assert jsteg.extract_bytes(artifact.data) == TEKST_PL
 
     stream = io.BytesIO(artifact.data)
     assert read_jpeg_bytes(stream) == artifact.data
@@ -54,7 +53,7 @@ def test_metoda_dct_w_rejestrze_i_read_jpeg_bytes(cover_png):
         read_jpeg_bytes(io.BytesIO(cover_png.read_bytes()))
 
 
-@pytest.mark.parametrize("method_name", ["lsb", "dct", "jsteg-mf", "f5"])
+@pytest.mark.parametrize("method_name", ["lsb", "jsteg", "jsteg-mf", "f5"])
 def test_s3_pelny_scenariusz_restart_i_zaklocenia(cover_png, tmp_path, method_name):
     """Weryfikacja kryteriów S3-01 i S3-04:
     wczytaj -> osadź -> zapisz -> otwórz po restarcie -> odczytaj -> zakłóć -> sprawdź.
@@ -98,7 +97,7 @@ def test_http_endpoints_jesli_flask_dostepny(cover_png, tmp_path):
     assert client.get("/api/v1/health").status_code == 200
 
     res_emb = client.post(
-        "/api/v1/dct/embed",
+        "/api/v1/jsteg/embed",
         data={
             "file": (io.BytesIO(cover_png.read_bytes()), "cover.png"),
             "text": TEKST_PL,
@@ -109,9 +108,23 @@ def test_http_endpoints_jesli_flask_dostepny(cover_png, tmp_path):
     encoded = base64.b64decode(res_emb.get_json()["image_base64"])
 
     res_ext = client.post(
-        "/api/v1/dct/extract",
+        "/api/v1/jsteg/extract",
         data={"file": (io.BytesIO(encoded), "wynik.jpg")},
         content_type="multipart/form-data",
     )
     assert res_ext.status_code == 200
     assert res_ext.get_json()["text"] == TEKST_PL
+
+def test_openapi_publikuje_formaty_dla_kazdej_metody(tmp_path):
+    """Frontend odczytuje formaty z x-steganography; każda metoda musi je mieć."""
+    pytest.importorskip("flask")
+    from steganografia.server import create_app
+
+    spec = create_app(frontend_dir=tmp_path).test_client().get("/api/v1/openapi.json").get_json()
+    for name in METHOD_REGISTRY.names():
+        output = METHOD_REGISTRY.get(name).metadata.output_format.upper()
+        for operation in ("capacity", "embed", "extract"):
+            meta = spec["paths"][f"/{name}/{operation}"]["post"]["x-steganography"]
+            assert meta["output_format"] == output
+            expected_input = output if operation == "extract" else "PNG"
+            assert meta["input_format"] == expected_input

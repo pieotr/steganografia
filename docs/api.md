@@ -28,7 +28,7 @@ Przykład odpowiedzi:
 {
   "status": "ok",
   "service": "steganografia",
-  "methods": ["dct", "f5", "jsteg", "jsteg-mf", "lsb"]
+  "methods": ["f5", "jsteg", "jsteg-mf", "lsb", "nsf5", "outguess"]
 }
 ```
 
@@ -118,33 +118,33 @@ Przykład odpowiedzi:
 }
 ```
 
-### POST /api/v1/dct/capacity
+### POST /api/v1/jsteg/capacity
 
-Wczytuje obraz PNG i zwraca pojemność dla metody DCT. Pojemność obejmuje 13-bajtowy nagłówek ramki.
+Wczytuje obraz PNG i zwraca pojemność dla metody JSteg. Pojemność obejmuje 13-bajtowy nagłówek ramki.
 
 ```sh
-curl -X POST http://localhost:5000/api/v1/dct/capacity \
+curl -X POST http://localhost:5000/api/v1/jsteg/capacity \
   -F "file=@oryginal.png"
 ```
 
 Odpowiedź zawiera `capacity_bytes`, `payload_capacity_bytes`, `format: "PNG"` oraz `output_format: "JPEG"`.
 
-### POST /api/v1/dct/embed
+### POST /api/v1/jsteg/embed
 
-Osadza tekst UTF-8 w obrazie PNG metodą DCT. Wynik jest obrazem JPEG zakodowanym w `image_base64`.
+Osadza tekst UTF-8 w obrazie PNG metodą JSteg (parzystość niezerowych współczynników AC DCT). Wynik jest obrazem JPEG zakodowanym w `image_base64`.
 
 ```sh
-curl -X POST http://localhost:5000/api/v1/dct/embed \
+curl -X POST http://localhost:5000/api/v1/jsteg/embed \
   -F "file=@oryginal.png" \
-  -F "text=Cześć metodą DCT!"
+  -F "text=Cześć metodą JSteg!"
 ```
 
-### POST /api/v1/dct/extract
+### POST /api/v1/jsteg/extract
 
 Odczytuje tekst z wynikowego obrazu JPEG.
 
 ```sh
-curl -X POST http://localhost:5000/api/v1/dct/extract \
+curl -X POST http://localhost:5000/api/v1/jsteg/extract \
   -F "file=@stego.jpg"
 ```
 
@@ -152,7 +152,7 @@ Odpowiedź ma taki sam format jak dla LSB: `text`, `length_chars` i `encoding`.
 
 ### POST /api/v1/jsteg-mf/{capacity,embed,extract}
 
-Endpointy JSteg-MF mają ten sam format żądań i odpowiedzi co endpointy DCT, ale używają metody `jsteg-mf`.
+Endpointy JSteg-MF mają ten sam format żądań i odpowiedzi co endpointy JSteg, ale używają metody `jsteg-mf`.
 
 ### POST /api/v1/f5/{capacity,embed,extract}
 
@@ -174,16 +174,16 @@ Warstwa `steganografia.api` wykorzystuje wzorzec metody steganograficznej:
 - `SteganographyRegistry` — rejestr metod,
 - `METHOD_REGISTRY` — globalna lista dostępnych algorytmów.
 
-DCT jest zarejestrowane w `METHOD_REGISTRY` jako metoda `dct`; endpointy używają kontraktu bajtowego `capacity_bytes`, `embed_bytes` i `extract_bytes`.
+JSteg jest zarejestrowany w `METHOD_REGISTRY` jako metoda `jsteg`; endpointy używają kontraktu bajtowego `capacity_bytes`, `embed_bytes` i `extract_bytes`.
 
 Materiał prezentacyjny z diagramem UML i przebiegiem działania rejestru:
 [UML i rejestr metod](rejestr-metod.md).
 
 ## Uwagi integracyjne
 
-- LSB przyjmuje i zwraca PNG. DCT przyjmuje PNG podczas osadzania, a zwraca i odczytuje JPEG.
+- LSB przyjmuje i zwraca PNG. Metody JPEG (np. JSteg) przyjmują PNG podczas osadzania, a zwracają i odczytują JPEG.
 - Żądania są form-data, więc frontend może wysyłać plik bezpośrednio z formularza.
 - Odpowiedzi API są w formacie JSON, z wyjątkiem wygenerowanego obrazu, który jest zwracany jako `image_base64`.
-- Endpointy są nazwane według metody (`lsb`, `dct`), a DCT korzysta z 13-bajtowej ramki STEG v1.
+- Endpointy są nazwane według metody (`lsb`, `jsteg`, `f5`…), a metody JPEG korzystają z 13-bajtowej ramki STEG v1.
 - Format wejściowy i wyjściowy każdego endpointu pochodzi z `MethodMetadata.input_formats` oraz `MethodMetadata.output_format` i może być różny dla metod.
 - Specyfikacja OpenAPI opisuje kody `200`, `400`, `404`, `405`, `413` i `500` oraz zawiera schematy odpowiedzi błędów `{"error": "...", "status": "error"}`.

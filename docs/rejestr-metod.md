@@ -40,7 +40,6 @@ classDiagram
     }
 
     class LSBMethod
-    class DCTMethod
     class JStegMethod
     class JStegMFMethod
     class F5Method
@@ -51,7 +50,6 @@ classDiagram
     SteganographyMethod *-- "1" MethodMetadata : posiada
     SteganographyMethod ..> EncodedArtifact : zwraca
     SteganographyMethod <|-- LSBMethod
-    SteganographyMethod <|-- DCTMethod
     SteganographyMethod <|-- JStegMethod
     SteganographyMethod <|-- JStegMFMethod
     SteganographyMethod <|-- F5Method
