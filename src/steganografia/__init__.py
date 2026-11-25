@@ -31,7 +31,7 @@ from .dct import (
     zigzag_scan,
 )
 from .jpeg import JpegCoefficients, png_to_jpeg, read_jpeg, write_jpeg
-from .steganalysis import chi_square_analysis, dct_histogram_report, rs_analysis
+from .steganalysis import chi_square_analysis, dct_histogram_report
 from .jsteg import (
     embed_jpeg as jsteg_embed_jpeg,
     extract_jpeg as jsteg_extract_jpeg,
