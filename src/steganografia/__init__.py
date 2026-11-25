@@ -31,6 +31,7 @@ from .dct import (
     zigzag_scan,
 )
 from .jpeg import JpegCoefficients, png_to_jpeg, read_jpeg, write_jpeg
+from .steganalysis import chi_square_analysis, dct_histogram_report, rs_analysis
 from .jsteg import (
     embed_jpeg as jsteg_embed_jpeg,
     extract_jpeg as jsteg_extract_jpeg,
@@ -93,6 +94,9 @@ __all__ = [
     "nsf5_embed_jpeg",
     "nsf5_extract_jpeg",
     "JpegCoefficients",
+    "chi_square_analysis",
+    "dct_histogram_report",
+    "rs_analysis",
     "embed_bits",
     "embed_frame",
     "extract_bits",

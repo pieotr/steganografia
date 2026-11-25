@@ -363,6 +363,69 @@ nieobsługiwane i zbyt duże pliki oraz błędy zapisu zgłaszają `ImageError`
 z opisem przyczyny. Limit wiadomości pozostaje zależny od pojemności LSB
 i jest zgłaszany jako `FrameError`.
 
+## Steganaliza — funkcje Pythona
+
+Moduł `steganografia.steganalysis` udostępnia trzy analizy, bez integracji
+z CLI, API HTTP ani GUI. Funkcje nie modyfikują danych wejściowych i zwracają
+słowniki z typami obsługiwanymi przez `json.dumps`, bez zapisywania plików.
+Nie wymagają nowych zależności.
+
+```python
+from steganografia import (
+    load_stego,
+    chi_square_analysis,
+    rs_analysis,
+    dct_histogram_report,
+)
+
+image = load_stego("wiadomosc.png")
+chi = chi_square_analysis(image, window_size=4096)
+rs = rs_analysis(image)
+rs_vertical = rs_analysis(image, axis=0)
+dct = dct_histogram_report("wiadomosc.jpg")
+```
+
+- **Chi-kwadrat**: osobne raporty R/G/B, globalnie i opcjonalnie w rozłącznych
+  oknach. `window_size` oznacza liczbę pikseli w kolejności wierszowej;
+  `start`/`end` to indeksy pikseli, z wyłączonym końcem. Końcowe niepełne okno
+  także jest analizowane. `channels["R"]["global"]` zawiera statystykę Pearsona,
+  stopnie swobody, `p_value` i liczbę użytych próbek/par. Testuje równość
+  liczebności wartości `(2k, 2k+1)`. Pary z oczekiwaną licznością mniejszą niż
+  `min_expected_count` (domyślnie 5 na komórkę) są pomijane. Wykorzystuje obie
+  komórki każdej pary i jeden stopień swobody na parę, warunkowo względem jej
+  sumy. Jest to wariant testu par, a nie konwencja statystyki i k−1 stopni
+  swobody z oryginalnego ataku Westfelda/Pfitzmanna. Duże `p_value` oznacza
+  zgodność z wyrównaniem par, **nie prawdopodobieństwo obecności wiadomości**.
+  Brak par spełniających minimum daje `status="insufficient_samples"`
+  oraz `statistic=None` i `p_value=None`.
+- **RS**: rozłączne grupy próbek jednego kanału, domyślnie cztery kolejne
+  piksele poziomo i maska `(0, 1, 1, 0)`. Grupy nie przekraczają granicy
+  wiersza, a przy `axis=0` — kolumny. Niepełne grupy są pomijane. Maska może
+  zawierać 0 i 1, z co najmniej jedną jedynką. Raport `channels["R"]` zawiera
+  liczności regular/singular/unusable dla maski dodatniej i ujemnej, przed
+  i po odwróceniu wszystkich LSB. `embedding_rate` szacuje udział próbek
+  użytych do osadzania losowych bitów, nie udział faktycznych zmian.
+  Estymacja zakłada rozproszone osadzanie; przy sekwencyjnym LSB i tekście
+  UTF-8 jest orientacyjna. Wartości poza `[0, 1]` nie są przycinane i mają
+  `status="out_of_range"`; brak rozwiązania lub grup daje `None`
+  i odpowiedni status. Wynik nie jest decyzją o wykryciu wiadomości.
+- **Histogramy DCT**: funkcja przyjmuje ścieżkę JPEG albo `JpegCoefficients`
+  z `read_jpeg()`. `components["Y"]` (analogicznie `Cb`, `Cr`) zawiera
+  histogram `dc`, zbiorczy `ac` oraz `ac_by_position` dla pozycji zig-zag 1–63.
+  Każdy histogram przechowuje posortowane `values` i odpowiadające im `counts`,
+  liczbę i udział zer, liczności `+1`/`-1`, niezerowych parzystych i nieparzystych.
+  Uwzględnia pełny zakres wartości ze znakami oraz zapisane bloki dopełnienia.
+  Nieobecny komponent ma puste histogramy i `zero_fraction=None`.
+  Ograniczenia formatu wejścia są takie same jak w `read_jpeg()` — baseline JPEG.
+  Raport nie wykonuje kalibracji ani klasyfikacji obrazu.
+
+Analizy przestrzenne przyjmują niepuste tablice NumPy `uint8` RGB lub RGBA
+(alfa jest pomijana). Żaden raport nie zawiera automatycznego progu detekcji.
+Założenia statystyczne wymagają osobnej oceny na reprezentatywnych obrazach.
+
+Podstawy metod: [atak par wartości Westfelda i Pfitzmanna](https://users.ece.cmu.edu/~adrian/487-s06/westfeld-pfitzmann-ihw99.pdf)
+oraz [RS — Fridrich, Goljan, Du](https://dde.binghamton.edu/publications/acm_2001_03.pdf).
+
 ## Jak uruchomić wszystkie testy
 
 Wymagania: **Python 3.10 lub nowszy** z modułami `venv` i `pip`.

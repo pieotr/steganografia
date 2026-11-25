@@ -168,7 +168,7 @@ def _encode_block(
     if zeroes:
         code, length = ac_codes[0]
         writer.write(code, length)
-    return int(block[0])
+    return int(block[0])dobra
 
 
 def _validate_blocks(blocks: Iterable[Sequence[int]], name: str) -> list[Sequence[int]]:
