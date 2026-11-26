@@ -250,3 +250,19 @@ def test_bug01_import_gwiazdkowy_i_brak_martwego_rs_analysis():
     exec('from steganografia import *', ns)
     assert 'rs_analysis' not in steg.__all__
     assert 'rs_analysis' not in ns
+
+def test_benchmark_s402_generuje_csv_i_metryki(tmp_path):
+    from benchmarks.run import compute_bit_error_rate, compute_mse_psnr, run_benchmark
+    obraz = np.full((16, 16, 3), 100, dtype=np.uint8)
+    buf = __import__('io').BytesIO()
+    Image.fromarray(obraz).save(buf, format='PNG')
+    mse0, psnr0 = compute_mse_psnr(obraz, buf.getvalue())
+    assert mse0 == 0.0 and np.isinf(psnr0)
+    assert compute_bit_error_rate(b'\x00', b'\xff') == 1.0
+    assert compute_bit_error_rate(b'\xaa', b'\xaa') == 0.0
+    csv_out = tmp_path / 'bench.csv'
+    md_out = tmp_path / 'summary.md'
+    rows = run_benchmark(csv_out, md_out, repeats=2, seed=123, payload_bytes=24)
+    assert len(rows) == 60
+    assert csv_out.exists() and md_out.exists()
+    assert all((r['skutecznosc_odzyskania'] == 'TRUE' and r['ber'] == '0.000000') or (r['skutecznosc_odzyskania'] == 'FALSE' and r['ber'] == 'NA') for r in rows) and any(r['skutecznosc_odzyskania'] == 'TRUE' for r in rows)
