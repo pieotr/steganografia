@@ -10,6 +10,7 @@ from typing import Optional
 
 from .frame import FrameError, pack, pack_bytes, unpack, unpack_bytes
 from .api import METHOD_REGISTRY
+from .disturb import run_disturb_experiments
 from .f5 import (
     DEFAULT_KEY as F5_DEFAULT_KEY,
     capacity_from_jpeg as f5_capacity_from_jpeg,
@@ -116,6 +117,29 @@ def _parser() -> argparse.ArgumentParser:
         "--force", "--overwrite", dest="overwrite", action="store_true",
         help="jawnie zezwól na nadpisanie istniejącego pliku",
     )
+
+    disturb = commands.add_parser(
+        "disturb",
+        help="uruchom eksperymenty zakłóceń (JPEG, szum, skalowanie) dla wszystkich metod i zapisz CSV",
+    )
+    disturb.add_argument("input", metavar="WEJŚCIE", help="statyczny PNG źródłowy")
+    disturb.add_argument(
+        "output_dir",
+        metavar="KATALOG_WYJŚCIOWY",
+        help="katalog zapisu obrazów po zakłóceniach oraz raportu disturb_report.csv",
+    )
+    disturb.add_argument(
+        "--text",
+        default="Kontrolny payload S4 — Zażółć gęślą jaźń",
+        help="wiadomość testowa do osadzenia przed zakłóceniami",
+    )
+    disturb.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="ziarno generatora losowego dla szumu Gaussa (domyślnie: 42)",
+    )
+
     for metadata in METHOD_REGISTRY.metadata():
         method = metadata["name"]
         help_text = metadata["label"]
@@ -332,6 +356,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 raise ImageError(f"Plik '{target}' już istnieje; wybierz inną nazwę lub --force")
             target.write_bytes(artifact.data)
             print(f"Zapisano {method.metadata.output_format.upper()}: {target}", file=sys.stderr)
+            return 0
+
+        elif args.command == "disturb":
+            load_cover(args.input)
+            csv_path = run_disturb_experiments(
+                args.input,
+                args.output_dir,
+                text=args.text,
+                seed=args.seed,
+            )
+            print(f"Zapisano raport eksperymentów zakłóceń: {csv_path}")
             return 0
 
         elif args.command == "extract":

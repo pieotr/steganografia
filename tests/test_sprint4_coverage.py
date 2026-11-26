@@ -1,4 +1,4 @@
-"""Testy Sprintu 4 (S5): nsF5, OutGuess, kontener STEGFILE, steganaliza, prymitywy DCT i przypadki negatywne."""
+"""Testy Sprintu 4 (S5): nsF5, OutGuess, kontener STEGFILE, steganaliza, prymitywy DCT, disturb CLI i przypadki negatywne."""
 
 import struct
 import numpy as np
@@ -214,7 +214,34 @@ def test_jpeg_nie_baseline_odrzucony_czytelnym_bledem(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 5. Regresja BUG-01: eksport rs_analysis w __all__
+# 5. Test symulatora zakłóceń (S3-03): komenda CLI steganografia disturb + CSV
+# ---------------------------------------------------------------------------
+
+
+def test_cli_disturb_eksperymenty_dla_6_metod_i_raport_csv(cover_png, tmp_path):
+    katalog_wynikow = tmp_path / "wyniki_disturb"
+    kod = main(["disturb", str(cover_png), str(katalog_wynikow), "--seed", "123"])
+    assert kod == 0
+
+    raport_csv = katalog_wynikow / "disturb_report.csv"
+    assert raport_csv.exists()
+
+    wiersze = raport_csv.read_text(encoding="utf-8").splitlines()
+    # Nagłówek + 6 metod * 7 scenariuszy (none, jpeg 90/70/50, noise 2.0/5.0, scale 0.75) = 43 wiersze
+    assert len(wiersze) == 1 + 6 * 7
+    assert wiersze[0] == (
+        "id_obrazu,metoda,rozmiar_payloadu_B,parametry_zaklocenia,"
+        "plik_wynikowy,status_ramki,wynik_odzyskania"
+    )
+
+    # Kontrola bez zakłóceń ('none:0:seed=123') musi dawać OK / IDENTICAL dla wszystkich 6 metod
+    wiersze_kontrolne = [w for w in wiersze[1:] if ",none:0:seed=123," in w]
+    assert len(wiersze_kontrolne) == 6
+    assert all(w.endswith(",OK,IDENTICAL") for w in wiersze_kontrolne)
+
+
+# ---------------------------------------------------------------------------
+# 6. Regresja BUG-01: eksport rs_analysis w __all__
 # ---------------------------------------------------------------------------
 
 
