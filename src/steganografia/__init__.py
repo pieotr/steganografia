@@ -31,7 +31,15 @@ from .dct import (
     zigzag_scan,
 )
 from .jpeg import JpegCoefficients, png_to_jpeg, read_jpeg, write_jpeg
-from .steganalysis import chi_square_analysis, dct_histogram_report
+from .steganalysis import (
+    chi_square_analysis,
+    dct_histogram_report,
+    hellinger_distance,
+    calibrate_histogram_detector,
+    histogram_detection,
+    calibrate_dct_histogram_detector,
+    dct_histogram_detection,
+)
 from .jsteg import (
     embed_jpeg as jsteg_embed_jpeg,
     extract_jpeg as jsteg_extract_jpeg,
@@ -96,6 +104,11 @@ __all__ = [
     "JpegCoefficients",
     "chi_square_analysis",
     "dct_histogram_report",
+    "hellinger_distance",
+    "calibrate_histogram_detector",
+    "histogram_detection",
+    "calibrate_dct_histogram_detector",
+    "dct_histogram_detection",
     "rs_analysis",
     "embed_bits",
     "embed_frame",

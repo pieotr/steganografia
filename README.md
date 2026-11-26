@@ -365,7 +365,7 @@ i jest zgłaszany jako `FrameError`.
 
 ## Steganaliza — funkcje Pythona
 
-Moduł `steganografia.steganalysis` udostępnia trzy analizy, bez integracji
+Moduł `steganografia.steganalysis` udostępnia funkcje analizy, bez integracji
 z CLI, API HTTP ani GUI. Funkcje nie modyfikują danych wejściowych i zwracają
 słowniki z typami obsługiwanymi przez `json.dumps`, bez zapisywania plików.
 Nie wymagają nowych zależności.
@@ -420,11 +420,87 @@ dct = dct_histogram_report("wiadomosc.jpg")
   Raport nie wykonuje kalibracji ani klasyfikacji obrazu.
 
 Analizy przestrzenne przyjmują niepuste tablice NumPy `uint8` RGB lub RGBA
-(alfa jest pomijana). Żaden raport nie zawiera automatycznego progu detekcji.
+(alfa jest pomijana). Same raporty chi-kwadrat i histogramów nie zawierają
+automatycznego progu detekcji. Detektor opisany poniżej kalibruje próg na danych.
 Założenia statystyczne wymagają osobnej oceny na reprezentatywnych obrazach.
 
 Podstawy metod: [atak par wartości Westfelda i Pfitzmanna](https://users.ece.cmu.edu/~adrian/487-s06/westfeld-pfitzmann-ihw99.pdf)
 oraz [RS — Fridrich, Goljan, Du](https://dde.binghamton.edu/publications/acm_2001_03.pdf).
+
+### Detektor histogramowy — odległość Hellingera
+
+Detektor normalizuje histogramy do udziałów i porównuje badany obraz ze
+średnim histogramem czystych obrazów. Każdy obraz wzorcowy ma jednakową wagę,
+niezależnie od rozmiaru. Wartości współczynników są dopasowywane według ich
+wartości (ze znakami), a brakujący słupek ma udział zero.
+
+Odległość wynosi `sqrt(sum((sqrt(h[v]) - sqrt(b[v]))**2) / 2)` i mieści się
+w `[0, 1]`. Zero oznacza identyczne histogramy. Nie jest to wartość `p` ani
+prawdopodobieństwo ukrycia wiadomości.
+
+```python
+import json
+from pathlib import Path
+from steganografia import (
+    calibrate_dct_histogram_detector,
+    dct_histogram_detection,
+)
+
+# Dwa osobne, niepuste zbiory czystych zdjęć o porównywalnej kompresji.
+model = calibrate_dct_histogram_detector(
+    sorted(Path("dane/wzorzec").glob("*.jpg")),
+    sorted(Path("dane/kalibracja").glob("*.jpg")),
+    quantile=0.95,
+)
+Path("model.json").write_text(json.dumps(model), encoding="utf-8")
+
+model = json.loads(Path("model.json").read_text(encoding="utf-8"))
+result = dct_histogram_detection("badany.jpg", model)
+print(result["distance"], result["threshold"], result["alarm"])
+```
+
+Próg to 95. percentyl odległości w zbiorze kalibracyjnym, wyznaczony metodą
+`numpy.quantile(..., method="higher")`. Alarm występuje wyłącznie przy
+`distance > threshold`; równość nie wywołuje alarmu. Można wybrać inny kwantyl
+z zakresu `(0, 1]`. Model zawiera wzorzec, próg, liczby obrazów, odległości
+kalibracyjne i `calibration_false_alarm_rate` — empiryczny odsetek alarmów
+na zbiorze kalibracyjnym, a nie oszacowanie skuteczności na nowych zdjęciach.
+
+Domyślnie detektor łączy wszystkie AC z Y/Cb/Cr, pomijając DC. Opcje
+`component="Y"` (także `"Cb"`, `"Cr"`, `"all"`) oraz
+`zigzag_position=1` (zakres 1–63, domyślnie `None`, czyli wszystkie AC)
+pozwalają wybrać szczegółowy histogram. Wybór jest zapisywany w modelu
+i stosowany przy detekcji. Wejściami funkcji DCT mogą być również obiekty
+`JpegCoefficients`. Ograniczenia odczytu JPEG są takie jak w `read_jpeg()`.
+
+Można także pracować bezpośrednio na histogramach `{"values": [...],
+"counts": [...]}`, np. wybranych z `dct_histogram_report()`:
+
+```python
+from steganografia import (
+    hellinger_distance,
+    calibrate_histogram_detector,
+    histogram_detection,
+)
+
+baza = {"values": [-1, 0, 1], "counts": [25, 50, 25]}
+obraz = {"values": [0, 1], "counts": [50, 50]}
+print(hellinger_distance(obraz, baza))  # 0.3826834323650898
+# W tym wariancie model budujemy z list wybranych histogramów:
+# model = calibrate_histogram_detector(histogramy_wzorcowe, histogramy_kalibracyjne)
+# result = histogram_detection(obraz, model)
+```
+
+W polu `reference.counts` zapisanego modelu znajdują się średnie udziały,
+czyli wagi sumujące się do 1, a nie surowe liczności. Funkcje nie zmieniają
+wejść ani nie zapisują plików. Nie wymagają dodatkowych zależności.
+
+Należy samodzielnie zapewnić rozdzielenie obrazów wzorcowych, kalibracyjnych
+i użytych do oceny skuteczności oraz dopasowanie warunków kompresji.
+Funkcje nie sprawdzają zgodności tablic kwantyzacji. Alarm oznacza nietypowy
+histogram, nie dowód steganografii. Detektor zbiorczego histogramu nie
+rozróżni zapisu OutGuess, który zachowuje ten histogram. Przydatność
+szczegółowych histogramów wymaga osobnej oceny na danych czystych i stego.
 
 ## Jak uruchomić wszystkie testy
 
