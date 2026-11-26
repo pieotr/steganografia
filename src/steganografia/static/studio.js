@@ -30,11 +30,49 @@ function decodeImage(data, method) {
   return new Blob([bytes], { type: config.mime });
 }
 
-if (typeof module !== 'undefined') module.exports = { uploadConfig, validateUpload, decodeImage };
+function decodeFile(data) {
+  if (data.payload_type !== 'file' || typeof data.filename !== 'string' || !data.filename ||
+      typeof data.file_base64 !== 'string' || !Number.isSafeInteger(data.payload_length_bytes) || data.payload_length_bytes < 0) {
+    throw new Error('The API did not return a valid recovered file.');
+  }
+  const bytes = Uint8Array.from(atob(data.file_base64), (character) => character.charCodeAt(0));
+  if (bytes.length !== data.payload_length_bytes) throw new Error('The recovered file size does not match the API response.');
+  // Do not render active formats (HTML/SVG/PDF) inline or trust uploaded MIME.
+  const png = [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => bytes[index] === byte);
+  const jpeg = [255, 216, 255].every((byte, index) => bytes[index] === byte);
+  return { blob: new Blob([bytes], { type: png ? 'image/png' : jpeg ? 'image/jpeg' : 'application/octet-stream' }),
+    filename: data.filename.replace(/\\/g, '/').split('/').pop().replace(/[\x00-\x1f\x7f]/g, '') || 'recovered-file.bin', preview: png || jpeg };
+}
+
+function apiErrorMessage(data, status, mode = 'crypt') {
+  // Upstream error prose is Polish and has no stable error codes. Translate
+  // recognized cases here; never expose arbitrary server prose or tracebacks.
+  const error = typeof data?.error === 'string' ? data.error : '';
+  if (status === 413) return 'The upload is too large. Choose smaller files and try again.';
+  if (status >= 500) return 'A server error prevented processing. Please try again later.';
+  if (status === 404 || status === 405) return 'This API operation is unavailable. Reload the page and try again.';
+  if (status === 401 || status === 403) return 'Access to this API operation was denied.';
+  if (status === 429) return 'The server is busy. Wait a moment and try again.';
+  const capacity = /^LENGTH \((\d+) B\) przekracza pojemność obrazu \(maksymalnie (\d+) B payloadu\)$/.exec(error);
+  if (capacity || /pojemność|nie mieści nagłówka|^Obraz mieści|^Sekwencja ma|Ramka nsF5 jest dłuższa|suche współczynniki/i.test(error)) {
+    if (mode === 'decrypt') return 'Hidden data does not fit this image. The image may be damaged, or the selected method or key may be incorrect.';
+    if (capacity) return `The payload is too large for this image: ${capacity[1]} bytes required, ${capacity[2]} bytes available. Use a smaller message or file, or a larger carrier image.`;
+    return 'The image has insufficient capacity for this payload or is too small for the header. Use a smaller message or file, or a larger carrier image.';
+  }
+  if (error === 'Payload nie zawiera osadzonego pliku.') return 'No hidden file was found. If the image contains text, select Text instead.';
+  if (error === 'Payload nie jest poprawnym UTF-8') return 'The hidden data is not valid UTF-8 text. If it is a file, select Photo or file instead.';
+  if (/histogram/i.test(error)) return 'The selected method could not preserve the JPEG histogram for this payload. Try a smaller payload or another carrier image.';
+  if (/PNG|JPEG|format obrazu|odczytać obrazu|tryb obrazu|bezpiecznego rozmiaru/i.test(error)) return 'The image format or contents are unsupported. Choose a valid image in the format shown for this method.';
+  if (mode === 'decrypt') return 'Could not recover the hidden content. Check the method, content type and key, and use the unchanged encoded image.';
+  return 'The API could not process this image. Check the image, hidden content and method options, then try again.';
+}
+
+if (typeof module !== 'undefined') module.exports = { uploadConfig, validateUpload, decodeImage, decodeFile, apiErrorMessage };
 
 if (typeof document !== 'undefined') {
   const $ = (id) => document.getElementById(id);
-  const state = { mode: 'crypt', method: '', methods: [], loading: true, file: null, sourceUrl: null, resultUrl: null, busy: false };
+  const state = { mode: 'crypt', method: '', methods: [], loading: true, file: null, sourceUrl: null, resultUrl: null, extractedUrl: null, busy: false };
+  const filePayload = () => $('payloadType').value === 'file';
   const selectedMethod = () => state.methods.find((method) => method.name === state.method);
   const selectedOperation = () => selectedMethod()?.operations[state.mode === 'crypt' ? 'embed' : 'extract'];
   const optionControls = new Map();
@@ -55,7 +93,7 @@ if (typeof document !== 'undefined') {
     $('methodSelect').disabled = state.busy || state.loading || !state.methods.length;
 
     const operation = selectedOperation();
-    $('proceedButton').disabled = state.busy || state.loading || !operation || Boolean(operation.reason);
+    $('proceedButton').disabled = state.busy || state.loading || !operation || Boolean(operation.reason) || (filePayload() && !operation.filePayload);
     for (const id of ['fileInput', 'dropzone', 'changeFile']) $(id).disabled = state.busy || !uploadConfig(selectedMethod(), state.mode);
     $('proceedButton').querySelector('span').textContent = state.busy ? 'Processing…' : 'Proceed';
     $('stegForm').setAttribute('aria-busy', String(state.busy));
@@ -63,6 +101,13 @@ if (typeof document !== 'undefined') {
 
   function clearResult() {
     window.ChangeInspector?.reset();
+    window.ImageHistogram?.resetResult();
+    if (state.extractedUrl) URL.revokeObjectURL(state.extractedUrl);
+    state.extractedUrl = null;
+    $('extractedFileBlock').hidden = true;
+    $('extractedFilePreview').hidden = true;
+    $('extractedFilePreview').removeAttribute('src');
+    $('extractedFileName').textContent = '';
     if (state.resultUrl) URL.revokeObjectURL(state.resultUrl);
     state.resultUrl = null;
     $('resultImage').hidden = true;
@@ -82,13 +127,17 @@ if (typeof document !== 'undefined') {
     const config = uploadConfig(method, state.mode);
     const decrypt = state.mode === 'decrypt';
     $('workspace').dataset.mode = state.mode;
-    $('panelTitle').textContent = decrypt ? 'Reveal text from an image' : 'Hide text in an image';
+    const content = filePayload() ? 'a file' : 'text';
+    $('panelTitle').textContent = decrypt ? `Reveal ${content} from an image` : `Hide ${content} in an image`;
     $('panelDescription').textContent = decrypt
-      ? `Upload an image and reveal its message${method ? ` with ${method.label}` : ''}.`
-      : `Choose an image and hide your message${method ? ` with ${method.label}` : ''}.`;
+      ? `Upload an image and recover its hidden ${filePayload() ? 'photo or file' : 'message'}${method ? ` with ${method.label}` : ''}.`
+      : `Choose a carrier image and hide ${filePayload() ? 'a photo or any file' : 'your message'}${method ? ` with ${method.label}` : ''}.`;
     $('sectionKicker').textContent = decrypt ? 'Reveal information' : 'Hide information';
-    $('messageField').hidden = decrypt;
-    $('methodFormat').textContent = config ? `${config.format} → ${decrypt ? 'Text' : operation?.output?.format || '?'}` : 'Format unavailable';
+    $('messageField').hidden = decrypt || filePayload();
+    $('payloadFileField').hidden = decrypt || !filePayload();
+    $('payloadSupport').hidden = !filePayload() || Boolean(operation?.filePayload);
+    $('resultTitle').textContent = filePayload() ? 'Image with a hidden file' : 'Image with a hidden message';
+    $('methodFormat').textContent = config ? `${config.format} → ${decrypt ? (filePayload() ? 'File' : 'Text') : operation?.output?.format || '?'}` : 'Format unavailable';
     $('methodNotice').hidden = !method || Boolean(operation && !operation.reason);
     $('methodNotice').textContent = !method ? '' : operation?.reason ||
       `No ${decrypt ? 'extract' : 'embed'} HTTP route is documented for ${method.label}. Processing is unavailable; no other method will be used instead.`;
@@ -205,6 +254,7 @@ if (typeof document !== 'undefined') {
     if (state.sourceUrl) URL.revokeObjectURL(state.sourceUrl);
     state.file = null;
     state.sourceUrl = null;
+    window.ImageHistogram?.reset();
     $('fileInput').value = '';
     $('previewImage').removeAttribute('src');
     $('fileName').textContent = '';
@@ -226,6 +276,7 @@ if (typeof document !== 'undefined') {
     removeFile();
     state.file = file;
     state.sourceUrl = URL.createObjectURL(file);
+    window.ImageHistogram?.setSource(file);
     $('previewImage').src = state.sourceUrl;
     $('fileName').textContent = file.name;
     $('fileSize').textContent = file.size < 1024 * 1024
@@ -243,6 +294,7 @@ if (typeof document !== 'undefined') {
     state.method = method;
     clearResult();
     if (contextChanged) renderOptions();
+    if (contextChanged) $('payloadFileInput').value = '';
     $('fileError').textContent = '';
     if (modeChanged || (state.file && validateUpload(state.file, selectedMethod(), mode))) removeFile();
     renderContext();
@@ -251,14 +303,20 @@ if (typeof document !== 'undefined') {
   async function processImage() {
     const method = selectedMethod();
     const operation = selectedOperation();
-    if (state.busy || state.loading || !operation || operation.reason) return;
+    if (state.busy || state.loading || !operation || operation.reason || (filePayload() && !operation.filePayload)) return;
     const error = validateUpload(state.file, method, state.mode);
     if (error) {
       $('fileError').textContent = error;
       $('dropzone').focus();
       return;
     }
-    if (state.mode === 'crypt' && !$('secretMessage').value.trim()) {
+    const hiddenFile = $('payloadFileInput').files?.[0];
+    if (state.mode === 'crypt' && filePayload() && (!hiddenFile || hiddenFile.size > 10 * 1024 * 1024)) {
+      $('processMessage').textContent = hiddenFile ? 'The hidden file can be up to 10 MB.' : 'Choose the photo or file you want to hide.';
+      $('payloadFileInput').focus();
+      return;
+    }
+    if (state.mode === 'crypt' && !filePayload() && !$('secretMessage').value.trim()) {
       $('processMessage').textContent = 'Enter the message you want to hide.';
       $('secretMessage').focus();
       return;
@@ -279,13 +337,16 @@ if (typeof document !== 'undefined') {
     try {
       const payload = new FormData();
       payload.append('file', state.file);
-      if (state.mode === 'crypt') payload.append('text', $('secretMessage').value);
+      if (state.mode === 'crypt') {
+        if (filePayload()) payload.append('payload_file', hiddenFile);
+        else payload.append('text', $('secretMessage').value);
+      } else if (operation.filePayload) payload.append('payload_type', filePayload() ? 'file' : 'text');
       options.forEach(([name, value]) => payload.append(name, value));
       const response = await fetch(operation.endpoint, {
         method: 'POST', body: payload, signal: AbortSignal.timeout(120000), redirect: 'error',
       });
       const data = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(data?.error || `Request failed (${response.status}). Please try again.`);
+      if (!response.ok) throw new Error(apiErrorMessage(data, response.status, state.mode));
       if (!data || data.success !== true || data.method !== method.name) throw new Error('The API returned an invalid response.');
       if (state.mode === 'crypt') {
         const blob = decodeImage(data, method);
@@ -296,15 +357,28 @@ if (typeof document !== 'undefined') {
         $('resultFileName').textContent = `encoded-${state.file.name.replace(/\.[^.]+$/, '')}.${operation.output.extension}`;
         $('resultFooter').hidden = false;
         $('resultMessage').textContent = '';
+        window.ImageHistogram?.setResult(blob);
+        $('inspectPayloadLabel').textContent = filePayload() ? 'Hidden file · bytes' : 'Message · UTF-8';
         window.ChangeInspector?.prepare({
           file: state.file, encodedBlob: blob, sourceUrl: state.sourceUrl,
           resultUrl: state.resultUrl, method: state.method,
-          messageBytes: new TextEncoder().encode($('secretMessage').value).length,
+          messageBytes: filePayload() ? hiddenFile.size : new TextEncoder().encode($('secretMessage').value).length,
         });
       } else {
-        if (typeof data.text !== 'string') throw new Error('The API did not return extracted text.');
-        $('extractedText').value = data.text;
-        $('extractedBlock').hidden = false;
+        if (filePayload()) {
+          const recovered = decodeFile(data);
+          state.extractedUrl = URL.createObjectURL(recovered.blob);
+          $('extractedFileName').textContent = recovered.filename;
+          $('extractedFileBlock').hidden = false;
+          if (recovered.preview) {
+            $('extractedFilePreview').src = state.extractedUrl;
+            $('extractedFilePreview').hidden = false;
+          }
+        } else {
+          if (typeof data.text !== 'string') throw new Error('The API did not return extracted text.');
+          $('extractedText').value = data.text;
+          $('extractedBlock').hidden = false;
+        }
       }
       setPhase('success');
       $('fileStatus').textContent = 'Image processed';
@@ -322,11 +396,27 @@ if (typeof document !== 'undefined') {
   }
 
   $('methodSelect').addEventListener('change', () => changeContext(state.mode, $('methodSelect').value));
+  $('payloadType').addEventListener('change', () => {
+    if (state.busy) return;
+    $('payloadFileInput').value = '';
+    clearResult();
+    renderContext();
+  });
+  $('payloadFileInput').addEventListener('change', () => { if (!state.busy) { clearResult(); renderContext(); } });
+  $('downloadExtractedFile').addEventListener('click', () => {
+    if (!state.extractedUrl || state.busy) return;
+    const link = document.createElement('a');
+    link.href = state.extractedUrl;
+    link.download = $('extractedFileName').textContent;
+    link.click();
+  });
 
   $('stegForm').addEventListener('reset', (event) => {
     event.preventDefault();
     if (state.busy) return;
     $('secretMessage').value = '';
+    $('payloadFileInput').value = '';
+    $('payloadType').value = 'text';
     $('characterCount').textContent = '0';
     renderOptions();
     removeFile();

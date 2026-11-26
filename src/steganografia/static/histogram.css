@@ -1,0 +1,59 @@
+/* Optional histogram: neutral controls, analytical RGB colours only. */
+.image-histogram { max-width: 1050px; margin: 28px auto 0; color: var(--text, #f7f7f7); }
+.image-histogram [hidden] { display: none !important; }
+.histogram-selector select:focus-visible, .histogram-stage canvas:focus-visible { outline: 2px solid #ccc; outline-offset: 3px; }
+.histogram-panel { padding: 28px 0 0; border-top: 1px solid var(--line, #333); }
+.histogram-panel h2 { margin: 0; font-size: 1.5rem; letter-spacing: -.025em; }
+.histogram-help, .histogram-axes, .histogram-summary, .histogram-status {
+  color: var(--muted-strong, #c2c2c2); font-size: .8rem; line-height: 1.65; overflow-wrap: anywhere;
+}
+.histogram-help { margin: 10px 0 20px; }
+.histogram-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 18px; }
+.histogram-selector { display: grid; min-width: 0; gap: 8px; font-size: .8rem; color: var(--muted-strong); }
+.histogram-selector select {
+  width: auto; max-width: 100%; min-width: 0; min-height: 44px; padding: 10px 14px;
+  background: var(--panel-soft, #181818); color: var(--text, #f7f7f7);
+  border: 1px solid var(--line-strong, #555); border-radius: 0; font: inherit;
+}
+.histogram-selector select:disabled { opacity: 1; cursor: default; }
+.histogram-status:empty { display: none; }
+.histogram-plot { margin-top: 24px; min-width: 0; }
+.histogram-stage { position: relative; min-width: 0; }
+.histogram-stage canvas { display: block; width: 100%; max-width: 100%; height: auto; background: #111; cursor: crosshair; touch-action: pan-y; }
+.histogram-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 14px; font-size: .78rem; color: var(--muted-strong); }
+.histogram-channel { display: inline-flex; align-items: center; gap: 7px; }
+.histogram-channel::before { content: ''; width: 15px; height: 3px; background: currentColor; }
+.histogram-channel-0 { color: #ff9696; }
+.histogram-channel-1 { color: #9bdda5; }
+.histogram-channel-2 { color: #9fc6ff; }
+.histogram-line-key { margin-left: auto; }
+.histogram-crosshair { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; }
+.histogram-crosshair-vertical, .histogram-crosshair-horizontal { position: absolute; opacity: .9; }
+.histogram-crosshair-vertical { width: 0; border-left: 1px dashed #ddd; }
+.histogram-crosshair-horizontal { height: 0; border-top: 1px dashed #ddd; }
+.histogram-markers { position: absolute; inset: 0; }
+.histogram-marker { position: absolute; width: 9px; height: 9px; border: 2px solid; border-radius: 50%; background: #111; transform: translate(-50%, -50%); }
+.histogram-marker-result { width: 6px; height: 6px; background: #eee; }
+.histogram-tooltip { position: absolute; z-index: 2; width: max-content; max-width: calc(100% - 16px); padding: 12px 14px; border: 1px solid #666; background: #191919; color: #f7f7f7; box-shadow: 0 8px 24px #0008; pointer-events: none; font-size: .78rem; font-variant-numeric: tabular-nums; }
+.histogram-tooltip-title { display: block; margin-bottom: 8px; font-size: .9rem; }
+.histogram-tooltip table { width: 100%; border-collapse: collapse; }
+.histogram-tooltip th, .histogram-tooltip td { padding: 7px 10px; text-align: right; border-top: 1px solid #3d3d3d; white-space: nowrap; }
+.histogram-tooltip th { font-weight: 600; }
+.histogram-tooltip th:first-child { text-align: left; padding-left: 0; }
+.histogram-tooltip th:last-child, .histogram-tooltip td:last-child { padding-right: 0; }
+.histogram-tooltip td b, .histogram-tooltip td small { display: block; }
+.histogram-tooltip td small { margin-top: 3px; font-size: .68rem; color: #c2c2c2; }
+.histogram-axes { margin: 10px 0 18px; }
+.histogram-summary p { margin: 6px 0; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 540px) {
+  .image-histogram { margin-top: 22px; }
+  .histogram-panel { padding: 24px 0 0; }
+  .histogram-panel h2 { font-size: 1.3rem; }
+  .histogram-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  .histogram-selector:first-child { grid-column: 1 / -1; }
+  .histogram-selector select { width: 100%; }
+  .histogram-line-key { width: 100%; margin-left: 0; }
+  .histogram-tooltip { position: static; width: 100%; max-width: 100%; margin-top: 12px; padding: 12px 10px; box-shadow: none; }
+  .histogram-tooltip th, .histogram-tooltip td { padding: 7px 6px; font-size: .72rem; }
+}

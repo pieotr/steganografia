@@ -24,6 +24,7 @@ button, select, textarea, input, .mode-switch, .tool-panel,
 .media-select-list, .media-select-option { border-radius: 0; }
 select, textarea, input[type="password"], input[type="text"],
 .method-options input:not([type="checkbox"]) {
+  border-radius: 0;
   width: 100%;
   min-height: 46px;
   padding: 11px 14px;
@@ -35,6 +36,19 @@ select, textarea, input[type="password"], input[type="text"],
 .method-options > .field-block + .field-block { margin-top: 20px; }
 .method-options { margin: 20px 0; }
 .method-options:empty { display: none; }
+input[type="file"] { max-width: 100%; width: 100%; min-width: 0; color: var(--muted-strong); font-size: .8rem; }
+input[type="file"]::file-selector-button {
+  min-height: 44px;
+  margin-right: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  color: var(--text);
+  background: var(--panel-soft);
+  font: inherit;
+  cursor: pointer;
+}
+input[type="file"]:disabled::file-selector-button { cursor: wait; opacity: .6; }
 .method-notice, .field-hint { overflow-wrap: anywhere; }
 .registry-retry {
   min-height: 44px;

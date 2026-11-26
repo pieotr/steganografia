@@ -13,7 +13,7 @@ const MethodRegistry = (() => {
   };
   // Compatibility information verified in baseline 53897ef and upstream
   // f19b1c8 server.py; this does not determine the discovered method list.
-  const legacyOutput = { lsb: 'PNG', jsteg: 'JPEG', 'jsteg-mf': 'JPEG', f5: 'JPEG' };
+  const legacyOutput = { lsb: 'PNG', dct: 'JPEG', 'jsteg-mf': 'JPEG', f5: 'JPEG' };
   const secretOption = (name, schema) => /key|password|secret|token/i.test(name) || schema.format === 'password' || schema.writeOnly === true;
 
   function resolve(document, value) {
@@ -44,18 +44,24 @@ const MethodRegistry = (() => {
     const properties = schema?.properties;
     const required = Array.isArray(schema?.required) ? schema.required : [];
     let reason = '';
-    if (!isObject(properties) || schema.type !== 'object' || schema.allOf || schema.oneOf || schema.anyOf || !Array.isArray(schema.required) || required.some((name) => typeof name !== 'string')) {
+    const binaryPayload = resolve(document, properties?.payload_file);
+    const payloadChoice = action === 'embed' && binaryPayload?.type === 'string' && binaryPayload.format === 'binary' &&
+      Array.isArray(schema?.oneOf) && schema.oneOf.length === 2 &&
+      schema.oneOf.every((branch) => isObject(branch) && Object.keys(branch).length === 1 && Array.isArray(branch.required) && branch.required.length === 1) &&
+      schema.oneOf.some((branch) => branch.required[0] === 'text') && schema.oneOf.some((branch) => branch.required[0] === 'payload_file');
+    if (!isObject(properties) || schema.type !== 'object' || schema.allOf || (schema.oneOf && !payloadChoice) || schema.anyOf || !Array.isArray(schema.required) || required.some((name) => typeof name !== 'string')) {
       reason = 'The API multipart schema is missing or unsupported.';
     }
     const file = resolve(document, properties?.file);
     const text = resolve(document, properties?.text);
     if (file?.type !== 'string' || file?.format !== 'binary' || !required.includes('file') ||
-        (action === 'embed' && (text?.type !== 'string' || !required.includes('text')))) {
+        (action === 'embed' && (text?.type !== 'string' || (!required.includes('text') && !payloadChoice)))) {
       reason = 'The API does not document the required file/text contract.';
     }
     const options = [];
     for (const [key, raw] of Object.entries(properties || {})) {
-      if (key === 'file' || (key === 'text' && action === 'embed')) continue;
+      if (key === 'file' || (action === 'embed' && (key === 'text' || (key === 'payload_file' && payloadChoice))) ||
+          (action === 'extract' && key === 'payload_type' && raw?.type === 'string' && Array.isArray(raw.enum) && raw.enum.includes('text') && raw.enum.includes('file'))) continue;
       const field = resolve(document, raw);
       if (!field || !['string', 'integer', 'number', 'boolean'].includes(field.type) || field.format === 'binary' || field.oneOf || field.anyOf || field.allOf || field.nullable || field.readOnly ||
           (field.enum && (!Array.isArray(field.enum) || !field.enum.length || field.enum.some((v) => typeof v !== (['integer', 'number'].includes(field.type) ? 'number' : field.type))))) {
@@ -65,7 +71,7 @@ const MethodRegistry = (() => {
       options.push({ name: key, schema: field, required: required.includes(key), secret: secretOption(key, field) });
     }
     if (required.some((key) => !own(properties || {}, key))) reason = 'The API required fields are not fully documented.';
-    // OpenAPI extension published by the backend for every method operation:
+    // Optional future OpenAPI extension, NOT current backend metadata:
     // operation["x-steganography"] = {input_format:"PNG",output_format:"JPEG"}.
     // Unknown methods fail closed without an explicit supported format contract.
     const metadata = post['x-steganography'];
@@ -74,7 +80,8 @@ const MethodRegistry = (() => {
     const input = typeof inputFormat === 'string' && own(formats, inputFormat) ? formats[inputFormat] : null;
     const output = typeof outputFormat === 'string' && own(formats, outputFormat) ? formats[outputFormat] : null;
     if (!input || (action === 'embed' && !output)) reason = reason || 'The API does not document supported image formats for this method.';
-    return { endpoint: path.startsWith('/api/v1/') ? path : `/api/v1${path}`, action, options, input: input || null, output: output || null, reason };
+    const filePayload = action === 'embed' ? Boolean(payloadChoice) : properties?.payload_type?.enum?.includes('file') === true;
+    return { endpoint: path.startsWith('/api/v1/') ? path : `/api/v1${path}`, action, options, input: input || null, output: output || null, filePayload, reason };
   }
 
   function discover(health, document) {
