@@ -245,6 +245,8 @@ def test_cli_disturb_eksperymenty_dla_6_metod_i_raport_csv(cover_png, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(reason="BUG-01: rs_analysis jest w __all__, ale brakuje modułu steganalysis/rs.py", strict=False)
-def test_bug01_import_gwiazdkowy_i_rs_analysis():
-    assert hasattr(steg, "rs_analysis")
+def test_bug01_import_gwiazdkowy_i_brak_martwego_rs_analysis():
+    ns = {}
+    exec('from steganografia import *', ns)
+    assert 'rs_analysis' not in steg.__all__
+    assert 'rs_analysis' not in ns

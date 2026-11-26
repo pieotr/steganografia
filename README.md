@@ -390,14 +390,11 @@ Nie wymagają nowych zależności.
 from steganografia import (
     load_stego,
     chi_square_analysis,
-    rs_analysis,
     dct_histogram_report,
 )
 
 image = load_stego("wiadomosc.png")
 chi = chi_square_analysis(image, window_size=4096)
-rs = rs_analysis(image)
-rs_vertical = rs_analysis(image, axis=0)
 dct = dct_histogram_report("wiadomosc.jpg")
 ```
 

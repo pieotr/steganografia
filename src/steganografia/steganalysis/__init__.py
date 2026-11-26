@@ -11,7 +11,7 @@ from .detector import (
 )
 
 __all__ = [
-    "chi_square_analysis", "rs_analysis", "dct_histogram_report",
+    "chi_square_analysis", "dct_histogram_report",
     "hellinger_distance", "calibrate_histogram_detector", "histogram_detection",
     "calibrate_dct_histogram_detector", "dct_histogram_detection",
 ]

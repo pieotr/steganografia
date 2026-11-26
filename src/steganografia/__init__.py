@@ -109,7 +109,6 @@ __all__ = [
     "histogram_detection",
     "calibrate_dct_histogram_detector",
     "dct_histogram_detection",
-    "rs_analysis",
     "embed_bits",
     "embed_frame",
     "extract_bits",
