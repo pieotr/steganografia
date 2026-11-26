@@ -5,7 +5,7 @@ from typing import Union
 
 import numpy as np
 
-from .frame import HEADER_SIZE, FrameError, parse_header, unpack
+from .frame import HEADER_SIZE, FrameError, parse_header, unpack_bytes
 
 
 def _validate_image(image: np.ndarray) -> None:
@@ -99,7 +99,7 @@ def embed_frame(image: np.ndarray, frame: bytes) -> np.ndarray:
         raise FrameError(
             f"Ramka ma {len(frame)} bajtów; oczekiwano {header.frame_size}"
         )
-    unpack(frame, capacity_bytes=total_capacity)
+    unpack_bytes(frame, capacity_bytes=total_capacity)
     return _write_bytes(image, frame)
 
 
@@ -121,7 +121,7 @@ def extract_frame(image: np.ndarray) -> bytes:
     frame_bit_count = header.frame_size * 8
     frame_bits = samples[:frame_bit_count] & np.uint8(1)
     frame = np.packbits(frame_bits, bitorder="big").tobytes()
-    unpack(frame, capacity_bytes=total_capacity)
+    unpack_bytes(frame, capacity_bytes=total_capacity)
     return frame
 
 

@@ -25,7 +25,7 @@ steganografia extract demo/wiadomosc.png > demo/odzyskany.txt
 python -c "from pathlib import Path; p = Path('demo/odzyskany.txt'); print(repr(p.read_text(encoding='utf-8'))); print(len(p.read_bytes()), 'bajtów UTF-8')"
 ```
 
-Oczekiwane wyniki: pojemność `600 B ramki; 587 B tekstu UTF-8`,
+Oczekiwane wyniki: pojemność `600 B ramki; 587 B payloadu`,
 odzyskany tekst `'Zażółć gęślą jaźń'`, długość `26 bajtów UTF-8`.
 Oryginał pozostaje bez zmian. Wynik to nowy, bezstratny PNG w trybie RGB.
 Ekstrakcja nie normalizuje ponownie obrazu.
@@ -53,13 +53,32 @@ Istniejący TXT jest chroniony przed nadpisaniem, chyba że podasz
 pliku docelowego. Dozwolona jest dokładnie jedna opcja źródła wiadomości:
 `--text` albo `--text-file`.
 
+## Ukrycie i odzyskanie dowolnego pliku
+
+Metody w `METHOD_REGISTRY` przyjmują `--payload-file` jako alternatywę dla
+tekstu. Plik jest osadzany jako dokładne bajty; do odzyskania wybierz
+`--output-file`, aby CLI nie próbowało dekodować danych jako UTF-8:
+
+```sh
+steganografia jsteg embed demo/oryginal.png demo/z-pliku.jpg --payload-file demo/dokument.pdf
+steganografia jsteg extract demo/z-pliku.jpg --output-file demo/odzyskany.pdf
+cmp demo/dokument.pdf demo/odzyskany.pdf
+```
+
+Tak samo działają pozostałe metody z rejestru (`lsb`, `jsteg-mf`, `f5`,
+`outguess`, `nsf5`) oraz podstawowe komendy LSB `embed` i `extract`.
+`--payload-file` jest wzajemnie wykluczające z `--text` i `--text-file`;
+`--output-file` jest wzajemnie wykluczające z `--output`. Istniejący plik
+wynikowy wymaga jawnego `--overwrite`.
+
 ## Komunikaty błędów
 
 Dla obrazu 40×40 payload może zawierać maksymalnie 587 bajtów. Tekst
 złożony z 294 znaków `ą` zajmuje 588 bajtów i zostanie odrzucony:
 
 ```text
-Pojemność: 600 B ramki; 587 B tekstu UTF-8 (po odjęciu nagłówka 13 B).
+Pojemność: 600 B ramki; 587 B payloadu (tekst UTF-8 lub bajty pliku)
+(po odjęciu nagłówka 13 B).
 Błąd: LENGTH (588 B) przekracza pojemność obrazu (maksymalnie 587 B payloadu)
 ```
 

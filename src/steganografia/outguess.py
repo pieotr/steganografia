@@ -6,7 +6,7 @@ import hashlib
 import numpy as np
 
 from .dct import CHROMINANCE_QUANTIZATION, LUMINANCE_QUANTIZATION, rgb_to_ycbcr, subsample_420
-from .frame import FrameError, HEADER_SIZE, pack, parse_header, unpack
+from .frame import FrameError, HEADER_SIZE, parse_header, unpack_bytes
 from .images import ImageError, load_cover
 from .jpeg import _encode_component, read_jpeg, write_jpeg
 
@@ -138,7 +138,7 @@ def _embed(
     header = parse_header(frame[:HEADER_SIZE], capacity_bytes=capacity)
     if len(frame) != header.frame_size:
         raise FrameError(f"Ramka ma {len(frame)} bajtów; oczekiwano {header.frame_size}")
-    unpack(frame, capacity_bytes=capacity)
+    unpack_bytes(frame, capacity_bytes=capacity)
 
     selected_indices = set(selection[: len(frame) * 8])
     payload_locations = [locations[index] for index in selection[: len(frame) * 8]]
@@ -195,7 +195,7 @@ def _extract(components: list[list[np.ndarray]], *, key: str) -> bytes:
     ])
     stream = _RC4(_key_bytes(key, b"payload")).read(parsed.frame_size)
     frame = bytes(left ^ right for left, right in zip(encrypted_frame, stream))
-    unpack(frame, capacity_bytes=capacity)
+    unpack_bytes(frame, capacity_bytes=capacity)
     return frame
 
 

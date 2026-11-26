@@ -37,6 +37,8 @@ from werkzeug.exceptions import BadRequest, HTTPException, MethodNotAllowed
 
 from .api import (
     METHOD_REGISTRY,
+    decode_file_payload,
+    encode_file_payload,
     read_jpeg_bytes,
     read_png_bytes,
 )
@@ -186,12 +188,24 @@ def build_openapi_spec() -> dict[str, Any]:
                     f"Obraz wynikowy {output_format.upper()}"
                 )
             if operation == "embed":
+                properties["payload_file"] = {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Plik binarny do ukrycia; użyj zamiast pola text",
+                }
                 properties["text"] = {
                     "type": "string",
-                    "description": "Tekst UTF-8 do ukrycia",
+                    "description": "Tekst UTF-8 do ukrycia; użyj zamiast pola payload_file",
+                }
+            if operation == "extract":
+                properties["payload_type"] = {
+                    "type": "string",
+                    "enum": ["text", "file"],
+                    "default": "text",
+                    "description": "Rodzaj payloadu do odzyskania",
                 }
             properties.update(option_properties)
-            required = ["file", "text"] if operation == "embed" else ["file"]
+            required = ["file"]
 
             if operation == "capacity":
                 summary = f"Pojemność obrazu dla {label}"
@@ -208,38 +222,86 @@ def build_openapi_spec() -> dict[str, Any]:
                     "required": ["method", "format", "output_format", "capacity_bytes", "payload_capacity_bytes"],
                 }
             elif operation == "embed":
-                summary = f"Osadź tekst metodą {label}"
+                summary = f"Osadź tekst lub plik metodą {label}"
                 response_description = f"Obraz {output_format.upper()} zakodowany w base64"
                 success_schema = {
-                    "type": "object",
-                    "properties": {
-                        "success": {"type": "boolean", "enum": [True]},
-                        "method": {"type": "string", "enum": [name]},
-                        "format": {"type": "string", "enum": [output_format.upper()]},
-                        "image_base64": {"type": "string", "format": "byte"},
-                        "payload_length_chars": {"type": "integer", "minimum": 0},
-                    },
-                    "required": [
-                        "success",
-                        "method",
-                        "format",
-                        "image_base64",
-                        "payload_length_chars",
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "success": {"type": "boolean", "enum": [True]},
+                                "method": {"type": "string", "enum": [name]},
+                                "format": {"type": "string", "enum": [output_format.upper()]},
+                                "image_base64": {"type": "string", "format": "byte"},
+                                "payload_length_chars": {"type": "integer", "minimum": 0},
+                            },
+                            "required": [
+                                "success", "method", "format", "image_base64",
+                                "payload_length_chars",
+                            ],
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "success": {"type": "boolean", "enum": [True]},
+                                "method": {"type": "string", "enum": [name]},
+                                "format": {"type": "string", "enum": [output_format.upper()]},
+                                "image_base64": {"type": "string", "format": "byte"},
+                                "payload_type": {"type": "string", "enum": ["file"]},
+                                "payload_filename": {"type": "string"},
+                                "payload_length_bytes": {"type": "integer", "minimum": 0},
+                            },
+                            "required": [
+                                "success", "method", "format", "image_base64", "payload_type",
+                                "payload_filename", "payload_length_bytes",
+                            ],
+                        },
                     ],
                 }
             else:
-                summary = f"Odczytaj tekst metodą {label}"
-                response_description = "Tekst odzyskany z obrazu"
+                summary = f"Odczytaj tekst lub plik metodą {label}"
+                response_description = (
+                    "Tekst odzyskany z obrazu albo plik odzyskany jako base64"
+                )
                 success_schema = {
-                    "type": "object",
-                    "properties": {
-                        "success": {"type": "boolean", "enum": [True]},
-                        "method": {"type": "string", "enum": [name]},
-                        "text": {"type": "string"},
-                        "length_chars": {"type": "integer", "minimum": 0},
-                        "encoding": {"type": "string", "enum": ["utf-8"]},
-                    },
-                    "required": ["success", "method", "text", "length_chars", "encoding"],
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "title": "Odpowiedź tekstowa",
+                            "description": "Ukryty payload był tekstem UTF-8.",
+                            "properties": {
+                                "success": {"type": "boolean", "enum": [True]},
+                                "method": {"type": "string", "enum": [name]},
+                                "text": {"type": "string"},
+                                "length_chars": {"type": "integer", "minimum": 0},
+                                "encoding": {"type": "string", "enum": ["utf-8"]},
+                            },
+                            "required": [
+                                "success", "method", "text", "length_chars", "encoding"
+                            ],
+                        },
+                        {
+                            "type": "object",
+                            "title": "Odpowiedź plikowa",
+                            "description": (
+                                "Ukryty payload był plikiem; file_base64 zawiera jego "
+                                "oryginalne bajty zakodowane w base64."
+                            ),
+                            "properties": {
+                                "success": {"type": "boolean", "enum": [True]},
+                                "method": {"type": "string", "enum": [name]},
+                                "payload_type": {"type": "string", "enum": ["file"]},
+                                "filename": {"type": "string"},
+                                "content_type": {"type": "string"},
+                                "file_base64": {"type": "string", "format": "byte"},
+                                "payload_length_bytes": {"type": "integer", "minimum": 0},
+                            },
+                            "required": [
+                                "success", "method", "payload_type", "filename",
+                                "content_type", "file_base64", "payload_length_bytes",
+                            ],
+                        },
+                    ],
                 }
 
             # Formaty obrazów dla frontendu: embed/capacity przyjmują format
@@ -262,6 +324,11 @@ def build_openapi_spec() -> dict[str, Any]:
                                     "type": "object",
                                     "properties": properties,
                                     "required": required,
+                                    **(
+                                        {"oneOf": [{"required": ["text"]}, {"required": ["payload_file"]}]}
+                                        if operation == "embed"
+                                        else {}
+                                    ),
                                 }
                             }
                         },
@@ -270,7 +337,39 @@ def build_openapi_spec() -> dict[str, Any]:
                         "200": {
                             "description": response_description,
                             "content": {
-                                "application/json": {"schema": success_schema}
+                                "application/json": {
+                                    "schema": success_schema,
+                                    **(
+                                        {
+                                            "examples": {
+                                                "text": {
+                                                    "summary": "Payload tekstowy",
+                                                    "value": {
+                                                        "success": True,
+                                                        "method": name,
+                                                        "text": "Przykładowy tekst",
+                                                        "length_chars": 17,
+                                                        "encoding": "utf-8",
+                                                    },
+                                                },
+                                                "file": {
+                                                    "summary": "Payload plikowy",
+                                                    "value": {
+                                                        "success": True,
+                                                        "method": name,
+                                                        "payload_type": "file",
+                                                        "filename": "dokument.bin",
+                                                        "content_type": "application/octet-stream",
+                                                        "file_base64": "AAECAwQ=",
+                                                        "payload_length_bytes": 5,
+                                                    },
+                                                },
+                                            }
+                                        }
+                                        if operation == "extract"
+                                        else {}
+                                    ),
+                                }
                             },
                         },
                         **standard_error_responses,
@@ -448,24 +547,66 @@ def create_app(frontend_dir: Optional[Union[str, os.PathLike[str]]] = None) -> F
         @app.post(f"/api/v1/{method_name}/embed", endpoint=f"{method_name}_embed")
         def embed(method=method, method_name=method_name):
             text = request.form.get("text")
-            if text is None:
+            payload_file = request.files.get("payload_file")
+            if payload_file is not None and text is not None:
+                raise BadRequest("Podaj dokładnie jedno z pól 'text' lub 'payload_file'.")
+            if payload_file is None and text is None:
                 raise BadRequest("Brakuje pola 'text'.")
             cover = _read_method_input(request.files.get("file"), input_format)
-            encoded = method.embed_bytes(cover, text, **_method_options(method))
-            return jsonify({
-                "success": True,
-                "method": method_name,
-                "format": output_format.upper(),
-                "image_base64": base64.b64encode(encoded.data).decode("ascii"),
-                "payload_length_chars": len(text),
-            })
+            if payload_file is not None:
+                filename = payload_file.filename
+                if not filename:
+                    raise BadRequest("Plik payload_file musi mieć nazwę.")
+                payload_data = payload_file.read()
+                payload = encode_file_payload(
+                    filename,
+                    payload_file.mimetype or "application/octet-stream",
+                    payload_data,
+                )
+                encoded = method.embed_bytes(cover, payload, **_method_options(method))
+                result = {
+                    "success": True,
+                    "method": method_name,
+                    "format": output_format.upper(),
+                    "image_base64": base64.b64encode(encoded.data).decode("ascii"),
+                    "payload_type": "file",
+                    "payload_filename": filename.replace("\\", "/").rsplit("/", 1)[-1],
+                    "payload_length_bytes": len(payload_data),
+                }
+            elif text is not None:
+                encoded = method.embed_bytes(cover, text, **_method_options(method))
+                result = {
+                    "success": True,
+                    "method": method_name,
+                    "format": output_format.upper(),
+                    "image_base64": base64.b64encode(encoded.data).decode("ascii"),
+                    "payload_length_chars": len(text),
+                }
+            else:
+                raise BadRequest("Podaj dokładnie jedno z pól 'text' lub 'payload_file'.")
+            return jsonify(result)
 
         @app.post(f"/api/v1/{method_name}/extract", endpoint=f"{method_name}_extract")
         def extract(method=method, method_name=method_name):
+            payload_type = request.form.get("payload_type", "text")
+            if payload_type not in {"text", "file"}:
+                raise BadRequest("Pole 'payload_type' musi mieć wartość 'text' lub 'file'.")
             uploaded_file = request.files.get("file")
             if uploaded_file is None:
                 raise BadRequest("Brakuje pola 'file'.")
             encoded = _read_method_input(uploaded_file, output_format)
+            if payload_type == "file":
+                payload = method.extract_payload_bytes(encoded, **_method_options(method))
+                filename, content_type, file_data = decode_file_payload(payload)
+                return jsonify({
+                    "success": True,
+                    "method": method_name,
+                    "payload_type": "file",
+                    "filename": filename,
+                    "content_type": content_type,
+                    "file_base64": base64.b64encode(file_data).decode("ascii"),
+                    "payload_length_bytes": len(file_data),
+                })
             text = method.extract_bytes(encoded, **_method_options(method))
             return jsonify({
                 "success": True,

@@ -36,6 +36,19 @@ def _payload_limit(capacity_bytes: int) -> int:
     return min(MAX_PAYLOAD_SIZE, capacity_bytes - HEADER_SIZE)
 
 
+def pack_bytes(payload: bytes, *, capacity_bytes: int) -> bytes:
+    """Utwórz ramkę z bajtami mieszczącą się w pojemności obrazu."""
+    if not isinstance(payload, bytes):
+        raise TypeError("Payload musi mieć typ bytes")
+    limit = _payload_limit(capacity_bytes)
+    if len(payload) > limit:
+        raise FrameError(
+            f"LENGTH ({len(payload)} B) przekracza pojemność obrazu "
+            f"(maksymalnie {limit} B payloadu)"
+        )
+    return _HEADER.pack(MAGIC, VERSION, len(payload), zlib.crc32(payload)) + payload
+
+
 def pack(text: str, *, capacity_bytes: int) -> bytes:
     """Zakoduj tekst UTF-8 i utwórz ramkę mieszczącą się w pojemności obrazu.
 
@@ -44,17 +57,11 @@ def pack(text: str, *, capacity_bytes: int) -> bytes:
     """
     if not isinstance(text, str):
         raise TypeError("Tekst musi mieć typ str")
-    limit = _payload_limit(capacity_bytes)
     try:
         payload = text.encode("utf-8")
     except UnicodeEncodeError as exc:
         raise FrameError("Tekstu nie można zakodować jako UTF-8") from exc
-    if len(payload) > limit:
-        raise FrameError(
-            f"LENGTH ({len(payload)} B) przekracza pojemność obrazu "
-            f"(maksymalnie {limit} B payloadu)"
-        )
-    return _HEADER.pack(MAGIC, VERSION, len(payload), zlib.crc32(payload)) + payload
+    return pack_bytes(payload, capacity_bytes=capacity_bytes)
 
 
 def parse_header(header: bytes, *, capacity_bytes: int) -> FrameHeader:
@@ -85,8 +92,8 @@ def parse_header(header: bytes, *, capacity_bytes: int) -> FrameHeader:
     return FrameHeader(length=length, crc32=checksum)
 
 
-def unpack(frame: bytes, *, capacity_bytes: int) -> str:
-    """Sprawdź jedną kompletną ramkę i odczytaj tekst UTF-8.
+def unpack_bytes(frame: bytes, *, capacity_bytes: int) -> bytes:
+    """Sprawdź jedną kompletną ramkę i zwróć jej payload jako bajty.
 
     Kontrola nagłówka, limitu LENGTH i rozmiaru ramki poprzedza dostęp
     do payloadu. Przekazany bufor bytes jest już w pamięci; czytnik obrazu
@@ -108,7 +115,12 @@ def unpack(frame: bytes, *, capacity_bytes: int) -> str:
     payload = memoryview(frame)[HEADER_SIZE:]
     if zlib.crc32(payload) != header.crc32:
         raise FrameError("Niezgodna suma CRC32")
+    return bytes(payload)
+
+
+def unpack(frame: bytes, *, capacity_bytes: int) -> str:
+    """Sprawdź jedną kompletną ramkę i odczytaj tekst UTF-8."""
     try:
-        return str(payload, encoding="utf-8", errors="strict")
+        return unpack_bytes(frame, capacity_bytes=capacity_bytes).decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
         raise FrameError("Payload nie jest poprawnym UTF-8") from exc

@@ -10,7 +10,7 @@ from .dct import (
     rgb_to_ycbcr,
     subsample_420,
 )
-from .frame import HEADER_SIZE, FrameError, parse_header, unpack
+from .frame import HEADER_SIZE, FrameError, parse_header, unpack_bytes
 from .images import ImageError, load_cover
 from .jpeg import _encode_component, read_jpeg, write_jpeg
 
@@ -63,7 +63,7 @@ def _embed_coefficients(
     header = parse_header(frame[:HEADER_SIZE], capacity_bytes=capacity)
     if len(frame) != header.frame_size:
         raise FrameError(f"Ramka ma {len(frame)} bajtów; oczekiwano {header.frame_size}")
-    unpack(frame, capacity_bytes=capacity)
+    unpack_bytes(frame, capacity_bytes=capacity)
     bits = _bits(frame)
     for bit, (block_index, position) in zip(bits, positions):
         coefficient = int(blocks[block_index][position])
@@ -99,7 +99,7 @@ def _extract_coefficients(
     )
     frame_bits = decoded[:header.frame_size * 8]
     frame = np.packbits(frame_bits, bitorder="big").tobytes()
-    unpack(frame, capacity_bytes=capacity)
+    unpack_bytes(frame, capacity_bytes=capacity)
     return frame
 
 

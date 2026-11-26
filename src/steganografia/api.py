@@ -10,8 +10,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import base64
 import io
+import json
 import os
 from pathlib import Path
+import struct
 import tempfile
 from dataclasses import dataclass
 from typing import Any
@@ -19,7 +21,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from .frame import FrameError, pack, unpack
+from .frame import FrameError, pack, pack_bytes, unpack, unpack_bytes
 from .images import ImageError, load_cover, load_stego, save_png
 from .lsb import capacity_bytes, embed_frame, extract_frame, payload_capacity_bytes
 from .jsteg import (
@@ -86,12 +88,16 @@ class SteganographyMethod(ABC):
         """Zwróć pojemność dla bajtów obrazu źródłowego."""
 
     @abstractmethod
-    def embed_bytes(self, cover: bytes, payload: str, **options: Any) -> EncodedArtifact:
-        """Osadź tekst i zwróć wynikowy plik."""
+    def embed_bytes(self, cover: bytes, payload: str | bytes, **options: Any) -> EncodedArtifact:
+        """Osadź tekst lub bajty i zwróć wynikowy plik."""
 
     @abstractmethod
     def extract_bytes(self, encoded: bytes, **options: Any) -> str:
         """Odczytaj tekst z wynikowego pliku."""
+
+    def extract_payload_bytes(self, encoded: bytes, **options: Any) -> bytes:
+        """Odczytaj bajty payloadu, zachowując zgodność metod tekstowych."""
+        return self.extract_bytes(encoded, **options).encode("utf-8")
 
     @abstractmethod
     def capacity(self, image: np.ndarray) -> dict[str, int]:
@@ -134,12 +140,19 @@ class LSBMethod(SteganographyMethod):
         image = load_png_from_bytes(cover, mode="cover")
         return self.capacity(image)
 
-    def embed_bytes(self, cover: bytes, payload: str, **options: Any) -> EncodedArtifact:
+    def embed_bytes(self, cover: bytes, payload: str | bytes, **options: Any) -> EncodedArtifact:
         image = load_png_from_bytes(cover, mode="cover")
-        return EncodedArtifact(save_png_to_bytes(self.embed(image, payload)), "image/png", ".png")
+        frame = _pack_payload(payload, capacity_bytes=capacity_bytes(image))
+        encoded = embed_frame(image, frame)
+        return EncodedArtifact(save_png_to_bytes(encoded), "image/png", ".png")
 
     def extract_bytes(self, encoded: bytes, **options: Any) -> str:
         return self.extract(load_png_from_bytes(encoded, mode="stego"))
+
+    def extract_payload_bytes(self, encoded: bytes, **options: Any) -> bytes:
+        image = load_png_from_bytes(encoded, mode="stego")
+        frame = extract_frame(image)
+        return unpack_bytes(frame, capacity_bytes=capacity_bytes(image))
 
 
 class _JpegMethod(SteganographyMethod):
@@ -160,10 +173,10 @@ class _JpegMethod(SteganographyMethod):
     def capacity_bytes(self, cover: bytes, **options: Any) -> dict[str, int]:
         return self.capacity(load_png_from_bytes(cover, mode="cover"))
 
-    def embed_bytes(self, cover: bytes, payload: str, **options: Any) -> EncodedArtifact:
+    def embed_bytes(self, cover: bytes, payload: str | bytes, **options: Any) -> EncodedArtifact:
         image = load_png_from_bytes(cover, mode="cover")
         total = jsteg_png_jpeg_capacity_bytes(image, mf=self.mf)
-        frame = pack(payload, capacity_bytes=total)
+        frame = _pack_payload(payload, capacity_bytes=total)
         with _temporary_file(cover, ".png") as source, _temporary_output(".jpg") as target:
             jsteg_embed_jpeg(source, target, frame, mf=self.mf, overwrite=True)
             data = Path(target).read_bytes()
@@ -174,6 +187,12 @@ class _JpegMethod(SteganographyMethod):
             frame = jsteg_extract_jpeg(source, mf=self.mf)
             total = jsteg_jpeg_capacity_bytes(source, mf=self.mf)
         return unpack(frame, capacity_bytes=total)
+
+    def extract_payload_bytes(self, encoded: bytes, **options: Any) -> bytes:
+        with _temporary_file(encoded, ".jpg") as source:
+            frame = jsteg_extract_jpeg(source, mf=self.mf)
+            total = jsteg_jpeg_capacity_bytes(source, mf=self.mf)
+        return unpack_bytes(frame, capacity_bytes=total)
 
 
 class JStegMethod(_JpegMethod):
@@ -211,10 +230,10 @@ class F5Method(SteganographyMethod):
     def capacity_bytes(self, cover: bytes, **options: Any) -> dict[str, int]:
         return self.capacity(load_png_from_bytes(cover, mode="cover"))
 
-    def embed_bytes(self, cover: bytes, payload: str, **options: Any) -> EncodedArtifact:
+    def embed_bytes(self, cover: bytes, payload: str | bytes, **options: Any) -> EncodedArtifact:
         key = options.get("key", F5_DEFAULT_KEY)
         total = self.capacity_bytes(cover)["capacity_bytes"]
-        frame = pack(payload, capacity_bytes=total)
+        frame = _pack_payload(payload, capacity_bytes=total)
         with _temporary_file(cover, ".png") as source, _temporary_output(".jpg") as target:
             f5_embed_jpeg(source, target, frame, key=key, overwrite=True)
             data = Path(target).read_bytes()
@@ -226,6 +245,13 @@ class F5Method(SteganographyMethod):
             frame = f5_extract_jpeg(source, key=key)
             total = f5_capacity_from_jpeg(source)
         return unpack(frame, capacity_bytes=total)
+
+    def extract_payload_bytes(self, encoded: bytes, **options: Any) -> bytes:
+        key = options.get("key", F5_DEFAULT_KEY)
+        with _temporary_file(encoded, ".jpg") as source:
+            frame = f5_extract_jpeg(source, key=key)
+            total = f5_capacity_from_jpeg(source)
+        return unpack_bytes(frame, capacity_bytes=total)
 
 
 class OutGuessMethod(SteganographyMethod):
@@ -260,11 +286,11 @@ class OutGuessMethod(SteganographyMethod):
         total = outguess_capacity_from_png(image, key=key)
         return {"capacity_bytes": total, "payload_capacity_bytes": max(0, total - 13)}
 
-    def embed_bytes(self, cover: bytes, payload: str, **options: Any) -> EncodedArtifact:
+    def embed_bytes(self, cover: bytes, payload: str | bytes, **options: Any) -> EncodedArtifact:
         key = options.get("key", OUTGUESS_DEFAULT_KEY)
         image = load_png_from_bytes(cover, mode="cover")
         total = outguess_capacity_from_png(image, key=key)
-        frame = pack(payload, capacity_bytes=total)
+        frame = _pack_payload(payload, capacity_bytes=total)
         with _temporary_file(cover, ".png") as source, _temporary_output(".jpg") as target:
             outguess_embed_jpeg(source, target, frame, key=key, overwrite=True)
             data = Path(target).read_bytes()
@@ -276,6 +302,13 @@ class OutGuessMethod(SteganographyMethod):
             frame = outguess_extract_jpeg(source, key=key)
             total = outguess_capacity_from_jpeg(source, key=key)
         return unpack(frame, capacity_bytes=total)
+
+    def extract_payload_bytes(self, encoded: bytes, **options: Any) -> bytes:
+        key = options.get("key", OUTGUESS_DEFAULT_KEY)
+        with _temporary_file(encoded, ".jpg") as source:
+            frame = outguess_extract_jpeg(source, key=key)
+            total = outguess_capacity_from_jpeg(source, key=key)
+        return unpack_bytes(frame, capacity_bytes=total)
 
 
 class NSF5Method(SteganographyMethod):
@@ -310,11 +343,11 @@ class NSF5Method(SteganographyMethod):
         total = nsf5_capacity_from_png(image, key=key)
         return {"capacity_bytes": total, "payload_capacity_bytes": max(0, total - 13)}
 
-    def embed_bytes(self, cover: bytes, payload: str, **options: Any) -> EncodedArtifact:
+    def embed_bytes(self, cover: bytes, payload: str | bytes, **options: Any) -> EncodedArtifact:
         key = options.get("key", NSF5_DEFAULT_KEY)
         image = load_png_from_bytes(cover, mode="cover")
         total = nsf5_capacity_from_png(image, key=key)
-        frame = pack(payload, capacity_bytes=total)
+        frame = _pack_payload(payload, capacity_bytes=total)
         with _temporary_file(cover, ".png") as source, _temporary_output(".jpg") as target:
             nsf5_embed_jpeg(source, target, frame, key=key, overwrite=True)
             data = Path(target).read_bytes()
@@ -326,6 +359,13 @@ class NSF5Method(SteganographyMethod):
             frame = nsf5_extract_jpeg(source, key=key)
             total = nsf5_capacity_from_jpeg(source, key=key)
         return unpack(frame, capacity_bytes=total)
+
+    def extract_payload_bytes(self, encoded: bytes, **options: Any) -> bytes:
+        key = options.get("key", NSF5_DEFAULT_KEY)
+        with _temporary_file(encoded, ".jpg") as source:
+            frame = nsf5_extract_jpeg(source, key=key)
+            total = nsf5_capacity_from_jpeg(source, key=key)
+        return unpack_bytes(frame, capacity_bytes=total)
 
 
 class SteganographyRegistry:
@@ -366,6 +406,56 @@ METHOD_REGISTRY.register(JStegMFMethod())
 METHOD_REGISTRY.register(F5Method())
 METHOD_REGISTRY.register(OutGuessMethod())
 METHOD_REGISTRY.register(NSF5Method())
+
+
+_FILE_PAYLOAD_MAGIC = b"STEGFILE\x01"
+_FILE_METADATA_LENGTH = struct.Struct(">I")
+
+
+def _pack_payload(payload: str | bytes, *, capacity_bytes: int) -> bytes:
+    if isinstance(payload, str):
+        return pack(payload, capacity_bytes=capacity_bytes)
+    if isinstance(payload, bytes):
+        return pack_bytes(payload, capacity_bytes=capacity_bytes)
+    raise TypeError("Payload musi mieć typ str lub bytes")
+
+
+def encode_file_payload(filename: str, content_type: str, data: bytes) -> bytes:
+    """Dołącz nazwę i typ MIME do pliku przed osadzeniem jego bajtów."""
+    safe_filename = filename.replace("\\", "/").rsplit("/", 1)[-1] or "payload.bin"
+    metadata = json.dumps(
+        {"filename": safe_filename, "content_type": content_type},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    if len(metadata) > 0xFFFFFFFF:
+        raise ValueError("Metadane pliku są zbyt duże.")
+    return _FILE_PAYLOAD_MAGIC + _FILE_METADATA_LENGTH.pack(len(metadata)) + metadata + data
+
+
+def decode_file_payload(payload: bytes) -> tuple[str, str, bytes]:
+    """Odczytaj nazwę, typ MIME i bajty pliku osadzonego przez API."""
+    prefix_size = len(_FILE_PAYLOAD_MAGIC) + _FILE_METADATA_LENGTH.size
+    if len(payload) < prefix_size or not payload.startswith(_FILE_PAYLOAD_MAGIC):
+        raise ValueError("Payload nie zawiera osadzonego pliku.")
+    metadata_size = _FILE_METADATA_LENGTH.unpack(
+        payload[len(_FILE_PAYLOAD_MAGIC):prefix_size]
+    )[0]
+    metadata_end = prefix_size + metadata_size
+    if metadata_end > len(payload):
+        raise ValueError("Niekompletne metadane osadzonego pliku.")
+    try:
+        metadata = json.loads(payload[prefix_size:metadata_end].decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("Nie można odczytać metadanych osadzonego pliku.") from exc
+    if not isinstance(metadata, dict):
+        raise ValueError("Niekompletne metadane osadzonego pliku.")
+    filename = metadata.get("filename")
+    content_type = metadata.get("content_type")
+    if not isinstance(filename, str) or not isinstance(content_type, str):
+        raise ValueError("Niekompletne metadane osadzonego pliku.")
+    safe_filename = filename.replace("\\", "/").rsplit("/", 1)[-1] or "payload.bin"
+    return safe_filename, content_type, payload[metadata_end:]
 
 
 class _TemporaryPath:

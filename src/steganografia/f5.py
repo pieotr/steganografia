@@ -7,7 +7,7 @@ import random
 import numpy as np
 
 from .dct import CHROMINANCE_QUANTIZATION, LUMINANCE_QUANTIZATION, rgb_to_ycbcr, subsample_420
-from .frame import HEADER_SIZE, FrameError, parse_header, unpack
+from .frame import HEADER_SIZE, FrameError, parse_header, unpack_bytes
 from .images import ImageError, load_cover
 from .jpeg import _encode_component, read_jpeg, write_jpeg
 
@@ -98,7 +98,7 @@ def _embed(
     header = parse_header(frame[:HEADER_SIZE], capacity_bytes=capacity)
     if len(frame) != header.frame_size:
         raise FrameError(f"Ramka ma {len(frame)} bajtów; oczekiwano {header.frame_size}")
-    unpack(frame, capacity_bytes=capacity)
+    unpack_bytes(frame, capacity_bytes=capacity)
 
     shuffled = [
         locations[index]
@@ -161,7 +161,7 @@ def _extract(components: list[list[np.ndarray]], *, key: str) -> bytes:
     if len(frame_bits) < header.frame_size * 8:
         raise FrameError("JPEG nie zawiera całej ramki F5")
     frame = bytes(np.packbits(np.asarray(frame_bits, dtype=np.uint8), bitorder="big"))
-    unpack(frame, capacity_bytes=capacity)
+    unpack_bytes(frame, capacity_bytes=capacity)
     return frame
 
 
