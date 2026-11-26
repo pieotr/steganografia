@@ -3,14 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Hide and reveal text in images with LSB and DCT steganography." />
+    <meta name="description" content="Hide and reveal text, photos and files in images. Inspect changes and RGB histograms." />
     <title>Steganography</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=02a338b" />
     <link rel="shortcut icon" href="/favicon.ico?v=02a338b" />
     <link rel="apple-touch-icon" href="/icon.png?v=02a338b" />
     <link rel="stylesheet" href="/styles.css?v=inspect1" />
     <link rel="stylesheet" href="/inspector.css?v=inspect6" />
-    <link rel="stylesheet" href="/theme.css?v=registry2" />
+    <link rel="stylesheet" href="/histogram.css?v=inspector1" />
+    <link rel="stylesheet" href="/theme.css?v=files1" />
   </head>
   <body>
     <div class="ambient ambient-one"></div>
@@ -58,6 +59,11 @@
               <p class="method-notice" id="methodNotice" role="status" hidden></p>
             </div>
             <div class="method-options" id="methodOptions" aria-label="Method options"></div>
+            <div class="field-block">
+              <div class="field-label-row"><label for="payloadType">Hidden content</label></div>
+              <select id="payloadType"><option value="text">Text</option><option value="file">Photo or file</option></select>
+              <p id="payloadSupport" class="field-hint" hidden>This API does not support hidden files for the selected operation.</p>
+            </div>
             <div class="field-block">
               <div class="field-label-row">
                 <label for="fileInput" id="fileLabel">Carrier file</label>
@@ -115,6 +121,17 @@
               <p>Read-only · Your hidden message, revealed.</p>
             </div>
 
+            <div class="field-block" id="payloadFileField" hidden>
+              <div class="field-label-row"><label for="payloadFileInput">Photo or file to hide</label><span>Up to 10 MB</span></div>
+              <input id="payloadFileInput" type="file" aria-describedby="payloadFileHint" />
+              <p class="field-hint" id="payloadFileHint">Recovered byte-for-byte. The file must fit inside the carrier image.</p>
+            </div>
+            <div class="extracted-block" id="extractedFileBlock" hidden>
+              <div class="field-label-row"><strong>Extracted file</strong><span id="extractedFileName"></span></div>
+              <img id="extractedFilePreview" alt="Recovered image preview" hidden style="max-width:100%;max-height:360px;object-fit:contain" />
+              <button class="inspect-toggle" id="downloadExtractedFile" type="button">Download recovered file</button>
+            </div>
+
             <p class="process-message" id="processMessage" role="status"></p>
             <button class="primary-button" id="proceedButton" type="submit" disabled>
               <span>Proceed</span>
@@ -162,7 +179,7 @@
         <div id="inspectorContent" hidden>
 
           <dl class="inspection-stats">
-            <div><dt>Message · UTF-8</dt><dd id="inspectMessageBytes">—</dd></div>
+            <div><dt id="inspectPayloadLabel">Message · UTF-8</dt><dd id="inspectMessageBytes">—</dd></div>
             <div><dt>Changed pixels · RGB</dt><dd id="inspectChangedPixels">—</dd></div>
             <div><dt>Flipped bits · decoded RGB</dt><dd id="inspectFlippedBits">—</dd></div>
             <div><dt>File size · before → after</dt><dd id="inspectFileSizes">—</dd></div>
@@ -199,6 +216,7 @@
             <div class="bit-table-wrap"><table class="bit-table"><caption>RGB channel values · highlighted bits differ</caption><thead><tr><th scope="col">Channel</th><th scope="col">Before</th><th scope="col">After</th><th scope="col">Binary before → after</th></tr></thead><tbody id="pixelBitRows"></tbody></table></div>
 
           </div>
+          <div id="histogramMount"></div>
         </div>
 
       </section>
@@ -206,8 +224,9 @@
 
     </main>
 
-    <script src="/inspector.js?v=inspect6"></script>
-    <script src="/method-registry.js?v=registry1"></script>
-    <script src="/studio.js?v=registry3"></script>
+    <script src="/inspector.js?v=histogram1"></script>
+    <script src="/histogram.js?v=inspector1"></script>
+    <script src="/method-registry.js?v=files1"></script>
+    <script src="/studio.js?v=errors-en1"></script>
   </body>
 </html>

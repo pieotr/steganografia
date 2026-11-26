@@ -14,6 +14,7 @@
   const size = (bytes) => `${number(bytes)} B`;
 
   function reset() {
+    window.ImageHistogram?.close();
     generation += 1;
     if (worker) worker.terminate();
     if (cancelWorker) cancelWorker(new DOMException('Inspection cancelled.', 'AbortError'));
@@ -191,7 +192,10 @@
     $('inspectButton').textContent = 'Hide changes';
     $('inspectButton').setAttribute('aria-expanded', 'true');
     $('changeInspector').scrollIntoView({ block: 'start', behavior: 'auto' });
-    if (analysis || pending) return;
+    if (analysis || pending) {
+      if (analysis) window.ImageHistogram?.open();
+      return;
+    }
     const token = generation;
     const item = context;
     pending = true;
@@ -220,6 +224,7 @@
       pixelDetails(summary.firstChanged?.x || 0, summary.firstChanged?.y || 0);
       setView(false);
       $('inspectorContent').hidden = false;
+      if (!$('changeInspector').hidden) window.ImageHistogram?.open();
       $('inspectorStatus').textContent = '';
       $('inspectorStatus').hidden = true;
     } catch (error) {
@@ -234,6 +239,7 @@
   }
 
   function close() {
+    window.ImageHistogram?.close();
     $('changeInspector').hidden = true;
     $('inspectButton').textContent = 'Inspect changes';
     $('inspectButton').setAttribute('aria-expanded', 'false');
