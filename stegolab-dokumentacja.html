@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StegoLab — dokumentacja projektu v1</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --panel-2:#f1f3f6; --text:#1c2330; --muted:#5d6878;
+  --line:#dde2e9; --line-strong:#8a96a8; --accent:#2f5bd3; --accent-soft:#e7eefc;
+  --ok:#1e8a4c; --ok-soft:#e3f4ea; --warn:#a86a00; --warn-soft:#fbf1dc; --bad:#c0392b; --bad-soft:#fbe7e5;
+  --violet:#6b46c1; --violet-soft:#efe9fb; --code-bg:#f3f5f8;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono: ui-monospace,SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+}
+:root[data-theme="dark"]{
+  --bg:#12161d; --panel:#1a2029; --panel-2:#212935; --text:#e4e8ee; --muted:#9aa5b5;
+  --line:#2c3542; --line-strong:#6b788b; --accent:#7ea2ff; --accent-soft:#1f2c4a;
+  --ok:#4cc27f; --ok-soft:#173224; --warn:#e2a93b; --warn-soft:#3a2d12; --bad:#ff7a6b; --bad-soft:#3e1e1b;
+  --violet:#b39af5; --violet-soft:#2b2344; --code-bg:#161b23;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.62 var(--sans)}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+code,kbd,pre{font-family:var(--mono);font-size:.88em}
+code{background:var(--code-bg);border:1px solid var(--line);border-radius:4px;padding:.05em .35em}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow:auto;line-height:1.5;margin:12px 0}
+pre code{background:none;border:0;padding:0;font-size:.86em}
+kbd{border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:4px;padding:0 .35em;background:var(--panel)}
+/* layout */
+.layout{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
+nav.side{position:sticky;top:0;height:100vh;overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:18px 14px 40px}
+.brand{display:flex;gap:10px;align-items:center;margin:0 4px 14px}
+.brand-logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--violet));display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px}
+.brand b{display:block;font-size:15px} .brand small{color:var(--muted);font-size:12px}
+.search{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--text);font:inherit;font-size:14px;margin-bottom:10px}
+.side-tools{display:flex;gap:6px;margin-bottom:12px}
+.side-tools button{flex:1;font:inherit;font-size:12.5px;padding:6px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);border-radius:7px;cursor:pointer}
+nav.side h4{margin:16px 6px 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+nav.side ol{list-style:none;margin:0;padding:0}
+nav.side li a{display:block;padding:4px 8px;border-radius:6px;color:var(--text);font-size:13.5px}
+nav.side li a:hover{background:var(--panel-2);text-decoration:none}
+nav.side li a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.side li.sub a{padding-left:22px;font-size:12.8px;color:var(--muted)}
+nav.side li.hidden{display:none}
+main{padding:28px clamp(18px,4vw,56px) 80px;max-width:1080px}
+header.hero{background:linear-gradient(135deg,var(--accent-soft),var(--violet-soft));border:1px solid var(--line);border-radius:14px;padding:26px 28px;margin-bottom:28px}
+header.hero h1{margin:0 0 6px;font-size:30px;line-height:1.2}
+header.hero p{margin:4px 0;color:var(--muted)}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12.5px;border:1px solid var(--line);background:var(--panel)}
+.pill.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.pill.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.pill.acc{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.pill.vio{background:var(--violet-soft);color:var(--violet);border-color:transparent}
+section.doc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 26px;margin:0 0 22px}
+.part-title{margin:38px 0 14px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px}
+.part-title:after{content:"";flex:1;height:1px;background:var(--line)}
+section.doc h2{margin:0 0 4px;font-size:22px}
+section.doc h3{margin:22px 0 8px;font-size:17px}
+section.doc h4{margin:16px 0 6px;font-size:15px}
+.lead{color:var(--muted);margin:0 0 14px}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel-2);font-weight:600}
+tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--panel-2) 45%,transparent)}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--panel-2)}
+.card h4{margin:0 0 6px}
+.card p{margin:4px 0;font-size:14px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel-2)}
+.stat b{display:block;font-size:24px;line-height:1.15}
+.stat span{color:var(--muted);font-size:13px}
+.note,.warnbox,.tip,.danger{border-radius:8px;padding:10px 14px;margin:12px 0;border-left:4px solid;font-size:14.2px}
+.note{background:var(--accent-soft);border-color:var(--accent)}
+.tip{background:var(--ok-soft);border-color:var(--ok)}
+.warnbox{background:var(--warn-soft);border-color:var(--warn)}
+.danger{background:var(--bad-soft);border-color:var(--bad)}
+.note b:first-child,.tip b:first-child,.warnbox b:first-child,.danger b:first-child{margin-right:4px}
+figure{margin:16px 0}
+figure svg{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+figcaption{font-size:13px;color:var(--muted);margin-top:6px}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps>li{counter-increment:s;position:relative;padding:2px 0 10px 40px}
+.steps>li:before{content:counter(s);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:600}
+details{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0;background:var(--panel-2)}
+details summary{cursor:pointer;font-weight:600}
+.hex{font-family:var(--mono);font-size:13px}
+.k{color:var(--violet)} .c{color:var(--muted)} .s{color:var(--ok)} .n{color:var(--warn)}
+.tag{font-family:var(--mono);font-size:12px;padding:1px 6px;border-radius:4px;background:var(--panel-2);border:1px solid var(--line)}
+.kanban{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:10px;overflow:auto}
+.kcol{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:120px}
+.kcol h5{margin:0 0 8px;font-size:12.5px;display:flex;justify-content:space-between}
+.kcard{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 8px;margin-bottom:6px;font-size:12.3px;line-height:1.35}
+.kcard i{font-style:normal;color:var(--muted);font-family:var(--mono);font-size:11px;display:block}
+.kcard.done{border-left:3px solid var(--ok)} .kcard.wip{border-left:3px solid var(--accent)} .kcard.rev{border-left:3px solid var(--violet)}
+.kcard.todo{border-left:3px solid var(--warn)} .kcard.blk{border-left:3px solid var(--bad)} .kcard.back{border-left:3px solid var(--line-strong)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ok)}
+footer{color:var(--muted);font-size:13px;margin-top:40px;text-align:center}
+mark{background:#ffe58a;color:#000;border-radius:2px}
+.toTop{position:fixed;right:18px;bottom:18px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer;font-size:18px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.menuBtn{display:none}
+/* svg */
+svg text{fill:var(--text);font-family:var(--sans);font-size:12px}
+svg .sm{font-size:10.5px} svg .xs{font-size:9.5px} svg .bd{font-weight:700} svg .mono{font-family:var(--mono)}
+svg .mut{fill:var(--muted)}
+svg .bx{fill:var(--panel-2);stroke:var(--line-strong);stroke-width:1.2}
+svg .bxa{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.3}
+svg .bxo{fill:var(--ok-soft);stroke:var(--ok);stroke-width:1.3}
+svg .bxw{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.3}
+svg .bxv{fill:var(--violet-soft);stroke:var(--violet);stroke-width:1.3}
+svg .bxr{fill:var(--bad-soft);stroke:var(--bad);stroke-width:1.3}
+svg .frame{fill:none;stroke:var(--line-strong);stroke-dasharray:5 4;stroke-width:1.1}
+svg .ln{stroke:var(--line-strong);stroke-width:1.3;fill:none}
+svg .lna{stroke:var(--accent);stroke-width:1.5;fill:none}
+svg .lnd{stroke:var(--line-strong);stroke-width:1.2;fill:none;stroke-dasharray:5 4}
+svg .life{stroke:var(--line-strong);stroke-width:1;stroke-dasharray:4 4}
+svg .act{fill:var(--accent-soft);stroke:var(--accent)}
+svg .ah{fill:var(--line-strong)} svg .aha{fill:var(--accent)}
+svg .tri{fill:var(--panel);stroke:var(--line-strong);stroke-width:1.3}
+svg .dot{fill:var(--text)}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  nav.side{position:fixed;z-index:20;left:0;top:0;width:290px;transform:translateX(-100%);transition:transform .2s;box-shadow:0 0 30px rgba(0,0,0,.2)}
+  nav.side.open{transform:none}
+  .menuBtn{display:block;position:fixed;left:12px;top:12px;z-index:21;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:6px 10px;font:inherit}
+  main{padding-top:60px}
+}
+@media print{
+  nav.side,.toTop,.menuBtn{display:none!important}
+  .layout{display:block} main{max-width:none;padding:0}
+  section.doc{break-inside:avoid-page;border:0;padding:0 0 10px}
+  details{display:block} details>*{display:block}
+}
+</style>
+</head>
+<body>
+<button class="menuBtn" onclick="document.querySelector('nav.side').classList.toggle('open')">☰ Spis treści</button>
+<div class="layout">
+<nav class="side" aria-label="Spis treści">
+  <div class="brand"><div class="brand-logo">SL</div><div><b>StegoLab</b><small>Dokumentacja v1 · 26.11.2026</small></div></div>
+  <input class="search" id="navSearch" type="search" placeholder="Szukaj w dokumentacji…" aria-label="Szukaj">
+  <div class="side-tools">
+    <button id="themeBtn" type="button">🌓 Motyw</button>
+    <button type="button" onclick="window.print()">🖨 Drukuj</button>
+  </div>
+  <h4>Start</h4>
+  <ol>
+    <li><a href="#przeglad">Przegląd projektu</a></li>
+    <li><a href="#szybki-start">Szybki start (5 minut)</a></li>
+  </ol>
+  <h4>I. Podręcznik użytkownika</h4>
+  <ol>
+    <li><a href="#podstawy">Steganografia w pigułce</a></li>
+    <li><a href="#instalacja">Instalacja i uruchomienie</a></li>
+    <li><a href="#web">Interfejs webowy</a></li>
+    <li><a href="#cli">Wiersz poleceń (CLI)</a></li>
+    <li><a href="#dobor">Którą metodę wybrać?</a></li>
+    <li><a href="#bledy">Komunikaty błędów</a></li>
+    <li><a href="#faq">FAQ i ograniczenia</a></li>
+  </ol>
+  <h4>II. Architektura i API</h4>
+  <ol>
+    <li><a href="#architektura">Architektura systemu</a></li>
+    <li class="sub"><a href="#uml-komponenty">Diagram komponentów</a></li>
+    <li class="sub"><a href="#uml-wdrozenie">Diagram wdrożenia</a></li>
+    <li><a href="#moduly">Mapa modułów</a></li>
+    <li><a href="#klasy">Model klas (UML)</a></li>
+    <li><a href="#sekwencje">Przepływy (UML sekwencji)</a></li>
+    <li><a href="#rest">REST API</a></li>
+    <li><a href="#pyapi">API Pythona</a></li>
+    <li><a href="#rozszerzanie">Jak dodać nową metodę</a></li>
+    <li><a href="#frontend">Frontend od środka</a></li>
+    <li><a href="#testy">Testy i CI</a></li>
+  </ol>
+  <h4>III. Niski poziom</h4>
+  <ol>
+    <li><a href="#ramka">Ramka STEG v1 bajt po bajcie</a></li>
+    <li><a href="#lsb">LSB bit po bicie</a></li>
+    <li><a href="#png">Obsługa PNG i limity</a></li>
+    <li><a href="#jpeg">Własny kodek JPEG</a></li>
+    <li class="sub"><a href="#jpeg-dct">YCbCr, DCT, kwantyzacja</a></li>
+    <li class="sub"><a href="#jpeg-zigzag">Zig-zag</a></li>
+    <li class="sub"><a href="#jpeg-entropia">Kodowanie entropijne</a></li>
+    <li class="sub"><a href="#jpeg-plik">Struktura pliku i dekoder</a></li>
+    <li><a href="#jsteg">JSteg i JSteg-MF</a></li>
+    <li><a href="#f5">F5</a></li>
+    <li><a href="#nsf5">nsF5</a></li>
+    <li><a href="#outguess">OutGuess</a></li>
+    <li><a href="#stegfile">Kontener plików STEGFILE</a></li>
+    <li><a href="#steganaliza">Steganaliza</a></li>
+  </ol>
+  <h4>IV. Projekt</h4>
+  <ol>
+    <li><a href="#status">Aktualny status</a></li>
+    <li><a href="#problemy">Znane problemy</a></li>
+    <li><a href="#roadmapa">Plan rozwoju</a></li>
+    <li><a href="#slownik">Słownik pojęć</a></li>
+    <li><a href="#zrodla">Źródła</a></li>
+  </ol>
+</nav>
+<main id="content">
+<header class="hero" id="top">
+  <h1>StegoLab — system steganografii w obrazach</h1>
+  <p>Dokumentacja techniczna i podręcznik użytkownika · wersja 1 · stan repozytorium z 26 listopada 2026</p>
+  <p>Projekt zespołowy, kurs Sztuczna Inteligencja / Informatyka w Systemach i Układach Elektronicznych</p>
+  <div class="meta-row">
+    <span class="pill acc">Python ≥ 3.10</span><span class="pill acc">NumPy · Pillow · Flask</span>
+    <span class="pill ok">101 testów — wszystkie zielone</span><span class="pill vio">6 metod ukrywania</span>
+    <span class="pill warn">Sprint 4 z 4 (+ Review)</span><span class="pill">pakiet <code>steganografia</code> 0.1.0</span>
+  </div>
+</header>
+
+<section class="doc" id="przeglad">
+  <h2>Przegląd projektu</h2>
+  <p class="lead">Co to jest, dla kogo i co już umie.</p>
+  <p><b>StegoLab</b> (pakiet Pythona <code>steganografia</code>) ukrywa tekst lub dowolny plik w obrazie i odzyskuje go z samego zapisanego obrazu, bez dostępu do oryginału. Projekt porównuje dwie rodziny metod:</p>
+  <div class="grid g2">
+    <div class="card"><h4>🟦 Dziedzina przestrzenna — LSB</h4><p>Zmienia najmłodszy bit każdej składowej R, G, B pikseli obrazu PNG. Duża pojemność (ok. 3/8 bajtu na piksel), ale wiadomość ginie po każdej stratnej kompresji.</p></div>
+    <div class="card"><h4>🟪 Dziedzina częstotliwości — DCT/JPEG</h4><p>Zmienia skwantyzowane współczynniki DCT w prawdziwym pliku JPEG zapisanym własnym kodekiem: JSteg, JSteg-MF, F5, nsF5, OutGuess. Mniejsza pojemność, wynik to zwykły JPEG.</p></div>
+  </div>
+  <h3>Najważniejsze liczby</h3>
+  <div class="grid g4">
+    <div class="stat"><b>6</b><span>metod w <code>METHOD_REGISTRY</code></span></div>
+    <div class="stat"><b>3</b><span>interfejsy: web, CLI, Python + REST</span></div>
+    <div class="stat"><b>101</b><span>testów pytest (5 plików)</span></div>
+    <div class="stat"><b>~4,3 tys.</b><span>linii Pythona w <code>src/</code></span></div>
+    <div class="stat"><b>0</b><span>zewnętrznych bibliotek steganograficznych</span></div>
+    <div class="stat"><b>13 B</b><span>nagłówek wspólnej ramki STEG v1</span></div>
+    <div class="stat"><b>23 / 40</b><span>kart zadaniowych w „Gotowe”</span></div>
+    <div class="stat"><b>1</b><span>znany błąd otwarty (BUG-01)</span></div>
+  </div>
+  <h3>Co działa dziś</h3>
+  <ul>
+    <li>Ukrywanie i odczyt <b>tekstu UTF-8</b> oraz <b>dowolnych plików</b> (CLI i REST API) sześcioma metodami.</li>
+    <li>Wspólna ramka z sumą kontrolną CRC32 — uszkodzony lub obcy obraz daje czytelny błąd zamiast „śmieci”.</li>
+    <li>Własny enkoder i czytnik baseline JPEG (DCT, kwantyzacja, zig-zag, Huffman) — bez bibliotek typu <i>jpegio</i>.</li>
+    <li>Lokalna aplikacja webowa z inspektorem zmian (porównanie przed/po, mapa różnic, podgląd bitów piksela).</li>
+    <li>REST API generowane automatycznie z rejestru metod, z dokumentacją OpenAPI/Swagger.</li>
+    <li>Moduł steganalizy: test chi-kwadrat, histogramy współczynników DCT, detektor oparty na odległości Hellingera.</li>
+    <li>Automatyczne testy w GitHub Actions z raportem JUnit.</li>
+  </ul>
+  <div class="warnbox"><b>Granice deklaracji.</b> Projekt nie obiecuje niewykrywalności ani odporności na rekompresję, szum czy skalowanie. Ukrycie danych <b>nie jest szyfrowaniem</b>, a CRC32 wykrywa przypadkowe uszkodzenia, ale nie chroni przed celową zmianą.</div>
+</section>
+
+<section class="doc" id="szybki-start">
+  <h2>Szybki start (5 minut)</h2>
+  <ol class="steps">
+    <li><b>Przygotuj środowisko</b> w katalogu repozytorium (tym z <code>pyproject.toml</code>):
+<pre><code>python -m venv .venv
+source .venv/bin/activate        <span class="c"># Windows: .\.venv\Scripts\Activate.ps1</span>
+python -m pip install -e ".[test]"</code></pre></li>
+    <li><b>Sprawdź, czy wszystko działa:</b> <code>python -m pytest -q</code> → oczekiwany wynik <code>101 passed</code>.</li>
+    <li><b>Ukryj i odczytaj wiadomość z terminala:</b>
+<pre><code>steganografia capacity oryginal.png
+steganografia embed oryginal.png wynik.png --text "Zażółć gęślą jaźń"
+steganografia extract wynik.png</code></pre></li>
+    <li><b>Albo uruchom aplikację w przeglądarce:</b> <code>steganografia-api --port 5000</code> i otwórz <a href="http://localhost:5000/">http://localhost:5000/</a>.</li>
+  </ol>
+</section>
+
+<div class="part-title">Część I · Podręcznik użytkownika</div>
+
+<section class="doc" id="podstawy">
+  <h2>Steganografia w pigułce</h2>
+  <p><b>Steganografia</b> ukrywa sam fakt istnienia wiadomości: obraz wygląda zwyczajnie, a odbiorca, który zna metodę (i ewentualnie klucz), wydobywa z niego dane. <b>Szyfrowanie</b> robi coś innego: wiadomość jest widoczna, ale nieczytelna. Te dwa mechanizmy można łączyć — StegoLab na razie tylko ukrywa (decyzja o szyfrowaniu: karta X-01).</p>
+  <div class="grid g3">
+    <div class="card"><h4>Nośnik (cover)</h4><p>Obraz PNG, w którym chcesz ukryć dane. Nie jest modyfikowany — wynik zawsze trafia do nowego pliku.</p></div>
+    <div class="card"><h4>Payload</h4><p>To, co ukrywasz: tekst (kodowany jako UTF-8) albo bajty dowolnego pliku.</p></div>
+    <div class="card"><h4>Obraz stego</h4><p>Wynik: PNG (dla LSB) albo JPEG (dla metod DCT). Tylko z niego odczytuje się wiadomość.</p></div>
+  </div>
+  <h3>Pojemność</h3>
+  <p>Każdy obraz mieści ograniczoną liczbę bajtów. Program zawsze podaje dwie liczby: <b>pojemność ramki</b> (wszystko, co da się zapisać) i <b>pojemność payloadu</b> = ramka − 13 bajtów nagłówka. Polskie znaki zajmują w UTF-8 po 2 bajty, więc „ą” to 1 znak, ale 2 bajty.</p>
+</section>
+
+<section class="doc" id="instalacja">
+  <h2>Instalacja i uruchomienie</h2>
+  <h3>Wymagania</h3>
+  <table>
+    <tr><th>Składnik</th><th>Wersja</th><th>Uwagi</th></tr>
+    <tr><td>Python</td><td>3.10 lub nowszy</td><td><code>pyproject.toml</code> deklaruje jeszcze <code>&gt;=3.9</code>, ale kod używa składni <code>int | bool</code> w adnotacjach (jsteg.py) i na 3.9 się nie zaimportuje — poprawka w S4-04.</td></tr>
+    <tr><td>NumPy</td><td>≥ 1.24</td><td>tablice pikseli i współczynników</td></tr>
+    <tr><td>Pillow</td><td>≥ 10</td><td>tylko odczyt/zapis PNG; JPEG zapisujemy własnym kodem</td></tr>
+    <tr><td>Flask</td><td>3.x</td><td>serwer API i frontendu</td></tr>
+    <tr><td>pytest</td><td>8–9</td><td>opcjonalnie, grupa <code>[test]</code></td></tr>
+  </table>
+  <h3>Instalacja</h3>
+<pre><code>git clone &lt;adres repozytorium&gt; steganografia
+cd steganografia
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[test]"</code></pre>
+  <p>Instalacja tworzy dwie komendy: <code>steganografia</code> (CLI) i <code>steganografia-api</code> (serwer). Bez instalacji można użyć <code>PYTHONPATH=src python -m steganografia …</code> oraz <code>python -m steganografia.server</code>.</p>
+  <h3>Uruchomienie serwera</h3>
+<pre><code>steganografia-api --host 127.0.0.1 --port 5000      <span class="c"># --debug włącza tryb deweloperski Flask</span></code></pre>
+  <table>
+    <tr><th>Adres</th><th>Zawartość</th></tr>
+    <tr><td><code>http://localhost:5000/</code></td><td>aplikacja webowa</td></tr>
+    <tr><td><code>/api/v1/swagger</code></td><td>interaktywna dokumentacja API (wymaga internetu — Swagger UI ładowany z CDN)</td></tr>
+    <tr><td><code>/api/v1/openapi.json</code></td><td>specyfikacja OpenAPI 3 generowana z rejestru metod</td></tr>
+    <tr><td><code>/api/v1/health</code></td><td>status i lista metod</td></tr>
+  </table>
+  <div class="note"><b>Port i host</b> można też ustawić zmiennymi środowiskowymi <code>PORT</code> i <code>HOST</code>. Domyślny host to <code>0.0.0.0</code> — na komputerze w obcej sieci lepiej podać <code>127.0.0.1</code>.</div>
+  <h3>Uzupełnianie komend w powłoce fish</h3>
+<pre><code>cp completions/steganografia.fish ~/.config/fish/completions/</code></pre>
+</section>
+
+<section class="doc" id="web">
+  <h2>Interfejs webowy</h2>
+  <p class="lead">Najprostsza droga: przeglądarka, bez wpisywania komend. Interfejs jest po angielsku (ujednolicenie języka: S4-04).</p>
+  <h3>Ukrywanie wiadomości (tryb <i>Crypt</i>)</h3>
+  <ol class="steps">
+    <li>Uruchom <code>steganografia-api</code> i otwórz <code>http://localhost:5000/</code>. Lista metod ładuje się z API — jeśli zobaczysz „Loading methods…”, serwer nie działa.</li>
+    <li>Wybierz zakładkę <b>Crypt</b> i metodę z listy <b>Method</b>. Etykieta obok pokazuje formaty, np. <code>PNG → JPEG</code>.</li>
+    <li>Jeśli metoda ma klucz (F5, nsF5, OutGuess), pojawi się pole <b>key</b>. Zapamiętaj go — bez niego odczyt się nie uda.</li>
+    <li>Przeciągnij obraz PNG (do 10 MB) na pole <b>Carrier file</b>.</li>
+    <li>Wpisz tekst w <b>Text to hide</b> i kliknij <b>Proceed</b>.</li>
+    <li>Pobierz wynik przyciskiem pobierania. Przycisk <b>Inspect changes</b> otwiera inspektor zmian.</li>
+  </ol>
+  <h3>Odczyt wiadomości (tryb <i>Decrypt</i>)</h3>
+  <ol class="steps">
+    <li>Wybierz <b>Decrypt</b> i <b>tę samą metodę</b>, której użyto przy ukrywaniu.</li>
+    <li>Wczytaj obraz wynikowy (PNG dla LSB, JPEG dla pozostałych) i podaj ten sam klucz.</li>
+    <li>Kliknij <b>Proceed</b> — tekst pojawi się w polu <b>Extracted text</b>.</li>
+  </ol>
+  <h3>Inspektor zmian</h3>
+  <table>
+    <tr><th>Element</th><th>Co pokazuje</th></tr>
+    <tr><td>Message · UTF-8</td><td>długość wiadomości w bajtach</td></tr>
+    <tr><td>Changed pixels · RGB</td><td>ile pikseli różni się po zdekodowaniu obu obrazów przez przeglądarkę</td></tr>
+    <tr><td>Flipped bits</td><td>łączna liczba odwróconych bitów w kanałach R, G, B</td></tr>
+    <tr><td>File size</td><td>rozmiar pliku przed → po</td></tr>
+    <tr><td>Before / after</td><td>suwak porównujący oryginał z wynikiem</td></tr>
+    <tr><td>Change map &amp; bits</td><td>mapa zmienionych pikseli ze wzmocnieniem 1–255× (domyślnie 64×) i tabela bitów wybranego piksela (klik lub strzałki)</td></tr>
+  </table>
+  <div class="warnbox"><b>Mapa różnic to nie dowód.</b> Pokazuje różnice zdekodowanych wartości RGB, wzmocnione dla czytelności. Dla metod JPEG prawie każdy piksel się zmienia, bo wynik jest kompresowany stratnie — to efekt samej kompresji, nie tylko ukrycia. Analiza działa w Web Workerze i obsługuje obrazy do 4 Mpx.</div>
+  <div class="note"><b>Dziś w UI brakuje:</b> wyświetlania pojemności przed osadzaniem, ukrywania plików (dostępne w CLI i API) oraz metryk MSE/PSNR — patrz karty S3-02 i S4-04.</div>
+</section>
+
+<section class="doc" id="cli">
+  <h2>Wiersz poleceń (CLI)</h2>
+  <p class="lead">Komenda <code>steganografia</code>. Komunikaty o pojemności trafiają na stderr, odczytany tekst — na stdout.</p>
+  <h3>Struktura komend</h3>
+<pre><code>steganografia capacity | embed | extract …          <span class="c"># skróty dla metody LSB</span>
+steganografia jpeg WEJŚCIE.png WYNIK.jpg              <span class="c"># sam pipeline PNG → JPEG, bez ukrywania</span>
+steganografia &lt;metoda&gt; capacity | embed | extract …  <span class="c"># metoda: lsb, jsteg, jsteg-mf, f5, nsf5, outguess</span></code></pre>
+  <h3>Opcje</h3>
+  <table>
+    <tr><th>Opcja</th><th>Gdzie</th><th>Znaczenie</th></tr>
+    <tr><td><code>--text TEKST</code></td><td>embed</td><td>wiadomość UTF-8 (może być pusta)</td></tr>
+    <tr><td><code>--text-file PLIK.txt</code></td><td>embed</td><td>tekst z pliku; musi być poprawnym UTF-8; zachowuje CRLF i BOM bez zmian</td></tr>
+    <tr><td><code>--payload-file PLIK</code></td><td>embed</td><td>ukryj dowolne bajty pliku (PDF, ZIP…)</td></tr>
+    <tr><td><code>-o, --output PLIK.txt</code></td><td>extract</td><td>zapisz odczytany tekst do pliku zamiast na stdout</td></tr>
+    <tr><td><code>--output-file PLIK</code></td><td>extract</td><td>zapisz dokładne bajty payloadu (bez dekodowania UTF-8)</td></tr>
+    <tr><td><code>--overwrite</code> / <code>--force</code></td><td>embed, extract, jpeg</td><td>zezwól na nadpisanie istniejącego pliku wynikowego</td></tr>
+    <tr><td><code>--key KLUCZ</code></td><td>f5, nsf5, outguess</td><td>klucz permutacji; domyślnie <code>steganografia-f5</code>, <code>steganografia-nsf5</code>, <code>steganografia-outguess</code></td></tr>
+  </table>
+  <p><code>--text</code>, <code>--text-file</code> i <code>--payload-file</code> wykluczają się — podaj dokładnie jedno.</p>
+  <h3>Przykłady</h3>
+<pre><code><span class="c"># LSB: pojemność, ukrycie, odczyt</span>
+$ steganografia capacity oryginal.png
+Pojemność: 6144 B ramki; 6131 B payloadu (tekst UTF-8 lub bajty pliku) (po odjęciu nagłówka 13 B).
+$ steganografia embed oryginal.png wynik.png --text "Zażółć gęślą jaźń"
+Zapisano PNG: wynik.png
+$ steganografia extract wynik.png
+Zażółć gęślą jaźń
+
+<span class="c"># F5 z własnym kluczem — wynik to JPEG</span>
+$ steganografia f5 embed oryginal.png tajne.jpg --text "Spotkanie o 18" --key moj-klucz
+$ steganografia f5 extract tajne.jpg --key moj-klucz
+
+<span class="c"># Ukrycie pliku i jego odzyskanie</span>
+$ steganografia jsteg embed oryginal.png dokument.jpg --payload-file umowa.pdf
+$ steganografia jsteg extract dokument.jpg --output-file odzyskana.pdf</code></pre>
+  <h3>Kody zakończenia</h3>
+  <table>
+    <tr><th>Kod</th><th>Znaczenie</th></tr>
+    <tr><td><code>0</code></td><td>sukces</td></tr>
+    <tr><td><code>1</code></td><td>błąd danych lub pliku (za długa wiadomość, brak ramki, błędny klucz, plik istnieje…)</td></tr>
+    <tr><td><code>2</code></td><td>błędna składnia komendy (argparse)</td></tr>
+  </table>
+  <h3>Zabezpieczenia plików</h3>
+  <ul>
+    <li>Plik wynikowy nigdy nie nadpisuje istniejącego bez <code>--overwrite</code>; plik wejściowy i wynikowy muszą się różnić.</li>
+    <li>Rozszerzenie wyniku musi pasować do metody: <code>.png</code> dla LSB, <code>.jpg</code>/<code>.jpeg</code> dla metod JPEG.</li>
+    <li>Błędna ramka nie tworzy ani nie nadpisuje pliku wynikowego przy <code>extract</code>.</li>
+  </ul>
+</section>
+
+<section class="doc" id="dobor">
+  <h2>Którą metodę wybrać?</h2>
+  <p class="lead">Pomiary orientacyjne z 26.11.2026 (jeden komputer, jeden obraz — nie zastępują benchmarku z karty S4-02).</p>
+  <table>
+    <tr><th>Metoda</th><th>Wejście → wyjście</th><th>Klucz</th><th>Pojemność netto<br><small>128×128, demo</small></th><th>Pojemność netto<br><small>512×512, syntetyczny</small></th><th>Osadzanie / odczyt<br><small>512×512</small></th><th>Kiedy</th></tr>
+    <tr><td><b>LSB</b></td><td>PNG → PNG</td><td>—</td><td>6 131 B</td><td>98 291 B</td><td>0,02 s / &lt;0,01 s</td><td>dużo danych, plik pozostaje PNG, brak rekompresji po drodze</td></tr>
+    <tr><td><b>JSteg</b></td><td>PNG → JPEG</td><td>—</td><td>1 120 B</td><td>3 229 B</td><td>0,67 s / 0,27 s</td><td>największa pojemność wśród metod JPEG; łatwo wykrywalny testem chi-kwadrat</td></tr>
+    <tr><td><b>JSteg-MF</b></td><td>PNG → JPEG</td><td>—</td><td>288 B</td><td>39 B</td><td>0,70 s / 0,26 s</td><td>krótkie wiadomości; zmiany tylko w średnich częstotliwościach</td></tr>
+    <tr><td><b>F5</b></td><td>PNG → JPEG</td><td>tak</td><td>742 B</td><td>2 148 B</td><td>1,05 s / 0,63 s</td><td>dobry kompromis: mało zmian dzięki kodowaniu macierzowemu</td></tr>
+    <tr><td><b>nsF5</b></td><td>PNG → JPEG</td><td>tak</td><td>177 B</td><td>506 B</td><td>0,71 s / 0,27 s</td><td>bez efektu „shrinkage”, najmniej oczywisty ślad w histogramie zer</td></tr>
+    <tr><td><b>OutGuess</b></td><td>PNG → JPEG</td><td>tak</td><td>146 B</td><td>94 B</td><td>0,74 s / 0,26 s</td><td>zachowuje histogram współczynników (odporny na prosty detektor histogramowy)</td></tr>
+  </table>
+  <div class="tip"><b>Reguła kciuka.</b> Plik ma trafić gdzieś, gdzie zostanie przekompresowany (komunikator, media społecznościowe)? Żadna metoda tego nie przeżyje — odczyt zakończy się błędem „Niepoprawne MAGIC” lub „Niezgodna suma CRC32”. Plik zostanie przesłany bez zmian? LSB daje najwięcej miejsca, F5 — najmniej zmian w JPEG.</div>
+  <p>Pojemność metod JPEG zależy od treści obrazu: im więcej niezerowych współczynników po kwantyzacji (tekstury, krawędzie), tym więcej miejsca. Gładkie, jednolite obrazy mogą nie zmieścić nawet nagłówka — program zgłasza to wprost.</p>
+</section>
+
+<section class="doc" id="bledy">
+  <h2>Komunikaty błędów i co z nimi zrobić</h2>
+  <table>
+    <tr><th>Komunikat</th><th>Najczęstsza przyczyna</th><th>Co zrobić</th></tr>
+    <tr><td><code>Niepoprawne MAGIC</code></td><td>obraz nie zawiera wiadomości, wybrano inną metodę, podano zły klucz albo plik został przekompresowany</td><td>sprawdź metodę i klucz; użyj oryginalnego pliku wynikowego</td></tr>
+    <tr><td><code>Niezgodna suma CRC32</code></td><td>nagłówek przetrwał, ale dane są uszkodzone</td><td>plik został zmieniony po drodze — nie da się go naprawić</td></tr>
+    <tr><td><code>LENGTH (N B) przekracza pojemność obrazu (maksymalnie M B payloadu)</code></td><td>za długa wiadomość</td><td>skróć tekst, użyj większego obrazu lub metody o większej pojemności</td></tr>
+    <tr><td><code>Nieobsługiwany format obrazu; wymagany PNG</code></td><td>na wejściu podano JPEG/GIF/WebP</td><td>przekonwertuj nośnik do PNG</td></tr>
+    <tr><td><code>Ekstrakcja wymaga PNG w trybie 8-bitowego RGB…</code></td><td>obraz LSB został przekonwertowany (np. dodano alfę, paletę)</td><td>użyj pliku dokładnie w takiej postaci, w jakiej go zapisano</td></tr>
+    <tr><td><code>Plik '…' już istnieje; wybierz nową nazwę lub jawnie podaj --force</code></td><td>ochrona przed nadpisaniem</td><td>zmień nazwę wyniku albo dodaj <code>--overwrite</code></td></tr>
+    <tr><td><code>Payload nie jest poprawnym UTF-8</code></td><td>ukryto plik binarny, a odczytujesz go jako tekst</td><td>użyj <code>--output-file</code></td></tr>
+    <tr><td><code>JPEG musi używać próbkowania 4:2:0</code> / <code>Nieobsługiwany lub niepełny baseline JPEG</code></td><td>JPEG nie pochodzi z tego programu</td><td>odczyt działa tylko dla plików zapisanych przez StegoLab</td></tr>
+    <tr><td><code>OutGuess nie może skorygować histogramu dla tej wiadomości</code></td><td>brak wolnych współczynników do korekty</td><td>krótsza wiadomość lub inny klucz</td></tr>
+    <tr><td><code>nsF5: suche współczynniki bloku nie wystarczają…</code></td><td>wiadomość zbyt bliska granicy pojemności</td><td>krótsza wiadomość lub inny klucz</td></tr>
+    <tr><td><code>Pojemność F5 zmniejszyła się przez shrinkage</code></td><td>zbyt wiele współczynników ±1 zamieniło się w zera</td><td>krótsza wiadomość</td></tr>
+    <tr><td><code>Obraz przekracza limit…</code></td><td>plik &gt; 64 MiB, &gt; 16 Mpx lub bok &gt; 16 384 px</td><td>zmniejsz obraz</td></tr>
+    <tr><td>HTTP 405 / 413</td><td>zła metoda HTTP / żądanie &gt; 64 MiB</td><td>używaj <code>POST</code>; zmniejsz plik</td></tr>
+  </table>
+</section>
+
+<section class="doc" id="faq">
+  <h2>FAQ i ograniczenia</h2>
+  <details><summary>Czy ktoś zobaczy, że w obrazie jest wiadomość?</summary><p>Gołym okiem raczej nie. Narzędziami statystycznymi — często tak. Moduł steganalizy w projekcie właśnie to pokazuje (np. JSteg jest wykrywany testem par wartości). Projekt nie deklaruje niewykrywalności.</p></details>
+  <details><summary>Czy klucz w F5/nsF5/OutGuess szyfruje wiadomość?</summary><p>Nie. Klucz wyznacza kolejność współczynników (a w OutGuess dodatkowo maskuje bity strumieniem RC4). To utrudnia przypadkowy odczyt, ale nie jest szyfrowaniem w sensie kryptograficznym. Jeśli treść ma być poufna, zaszyfruj plik przed ukryciem.</p></details>
+  <details><summary>Dlaczego metody JPEG przyjmują PNG, a nie JPEG?</summary><p>Program sam wykonuje kompresję JPEG, żeby mieć pełną kontrolę nad współczynnikami. Osadzanie w istniejącym zdjęciu JPEG jest zaplanowane (karta S5-02).</p></details>
+  <details><summary>Czy mogę otworzyć wynik JPEG w zwykłej przeglądarce zdjęć?</summary><p>Tak, to poprawny baseline JPEG 4:2:0. Uwaga: każde ponowne zapisanie w edytorze niszczy wiadomość.</p></details>
+  <details><summary>Co z przezroczystością w PNG?</summary><p>Kanał alfa jest pomijany przy wczytaniu; wynik LSB zawsze jest 8-bitowym RGB bez alfy. Metadane i paleta nie są przenoszone.</p></details>
+  <details><summary>Czy aplikacja wysyła gdzieś moje pliki?</summary><p>Nie. Serwer działa lokalnie; jedynym zasobem z internetu jest Swagger UI pod <code>/api/v1/swagger</code>. Pliki tymczasowe metod JPEG są usuwane po każdym żądaniu.</p></details>
+</section>
+
+<div class="part-title">Część II · Architektura i API</div>
+
+<section class="doc" id="architektura">
+  <h2>Architektura systemu</h2>
+  <p class="lead">Warstwy, odpowiedzialności i zasada „jeden rdzeń, trzy interfejsy”.</p>
+  <p>System jest zbudowany warstwowo. Algorytmy (rdzeń) nie wiedzą nic o HTTP ani terminalu; interfejsy nie implementują algorytmów, tylko wywołują wspólny kontrakt <code>SteganographyMethod</code> zarejestrowany w <code>METHOD_REGISTRY</code>. Dzięki temu nowa metoda pojawia się automatycznie w CLI, REST API, Swaggerze i w aplikacji webowej.</p>
+
+  <h3 id="uml-komponenty">Diagram komponentów (UML)</h3>
+  <figure>
+  <svg viewBox="0 0 960 600" role="img" aria-label="Diagram komponentów">
+    <defs><marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <!-- frames -->
+    <rect class="frame" x="12" y="12" width="936" height="128" rx="8"/><text x="24" y="30" class="sm mut bd">«warstwa» Interfejsy użytkownika</text>
+    <rect class="frame" x="12" y="160" width="936" height="96" rx="8"/><text x="24" y="178" class="sm mut bd">«warstwa» Usługi i transport</text>
+    <rect class="frame" x="12" y="276" width="936" height="210" rx="8"/><text x="24" y="294" class="sm mut bd">«warstwa» Rdzeń algorytmiczny (src/steganografia)</text>
+    <rect class="frame" x="12" y="506" width="936" height="80" rx="8"/><text x="24" y="524" class="sm mut bd">«zewnętrzne» Biblioteki</text>
+    <!-- UI -->
+    <g><rect class="bxa" x="36" y="42" width="280" height="86" rx="6"/><rect class="tri" x="292" y="48" width="16" height="12"/><rect class="tri" x="288" y="51" width="7" height="3"/><rect class="tri" x="288" y="56" width="7" height="3"/>
+      <text x="48" y="62" class="bd">Aplikacja webowa</text><text x="48" y="80" class="sm mono">static/index.html · studio.js</text><text x="48" y="96" class="sm mono">method-registry.js · inspector.js</text><text x="48" y="112" class="sm mono">inspection-worker.js (Web Worker)</text></g>
+    <g><rect class="bxa" x="340" y="42" width="270" height="86" rx="6"/><rect class="tri" x="586" y="48" width="16" height="12"/><rect class="tri" x="582" y="51" width="7" height="3"/><rect class="tri" x="582" y="56" width="7" height="3"/>
+      <text x="352" y="62" class="bd">CLI</text><text x="352" y="80" class="sm mono">cli.py · __main__.py</text><text x="352" y="96" class="sm">komenda: steganografia</text><text x="352" y="112" class="sm">completions/steganografia.fish</text></g>
+    <g><rect class="bxa" x="634" y="42" width="290" height="86" rx="6"/><rect class="tri" x="900" y="48" width="16" height="12"/><rect class="tri" x="896" y="51" width="7" height="3"/><rect class="tri" x="896" y="56" width="7" height="3"/>
+      <text x="646" y="62" class="bd">Biblioteka Pythona</text><text x="646" y="80" class="sm mono">import steganografia</text><text x="646" y="96" class="sm">__init__.py eksportuje funkcje</text><text x="646" y="112" class="sm">rdzenia i steganalizy</text></g>
+    <!-- services -->
+    <g><rect class="bxv" x="36" y="190" width="280" height="56" rx="6"/><text x="48" y="210" class="bd">Serwer HTTP — server.py</text><text x="48" y="228" class="sm mono">create_app() · build_openapi_spec()</text><text x="48" y="241" class="xs mut">Flask, trasy generowane z rejestru, Swagger UI</text></g>
+    <g><rect class="bxv" x="340" y="190" width="584" height="56" rx="6"/><text x="352" y="210" class="bd">Warstwa usług — api.py</text><text x="352" y="228" class="sm mono">METHOD_REGISTRY · SteganographyMethod · 6 klas metod (LSB, JSteg, F5, nsF5, OutGuess…)</text><text x="352" y="241" class="xs mut">wspólny kontrakt capacity / embed / extract, kontener STEGFILE, pliki tymczasowe</text></g>
+    <!-- core -->
+    <g><rect class="bxo" x="36" y="306" width="140" height="64" rx="6"/><text x="48" y="326" class="bd">frame.py</text><text x="48" y="343" class="sm">ramka STEG v1</text><text x="48" y="358" class="sm">pack · unpack · CRC32</text></g>
+    <g><rect class="bxo" x="186" y="306" width="140" height="64" rx="6"/><text x="198" y="326" class="bd">lsb.py</text><text x="198" y="343" class="sm">LSB w próbkach RGB</text><text x="198" y="358" class="sm">embed_frame · extract</text></g>
+    <g><rect class="bxo" x="336" y="306" width="140" height="64" rx="6"/><text x="348" y="326" class="bd">images.py</text><text x="348" y="343" class="sm">PNG przez Pillow</text><text x="348" y="358" class="sm">limity · atomowy zapis</text></g>
+    <g><rect class="bxo" x="486" y="306" width="140" height="64" rx="6"/><text x="498" y="326" class="bd">dct.py</text><text x="498" y="343" class="sm">YCbCr · 4:2:0 · DCT-II</text><text x="498" y="358" class="sm">kwantyzacja · zig-zag</text></g>
+    <g><rect class="bxo" x="636" y="306" width="140" height="64" rx="6"/><text x="648" y="326" class="bd">jpeg.py</text><text x="648" y="343" class="sm">enkoder baseline</text><text x="648" y="358" class="sm">read_jpeg (współczynniki)</text></g>
+    <g><rect class="bxw" x="786" y="306" width="138" height="64" rx="6"/><text x="798" y="326" class="bd">steganalysis/</text><text x="798" y="343" class="sm">chi² · histogramy DCT</text><text x="798" y="358" class="sm">detektor Hellingera</text></g>
+    <g><rect class="bxo" x="186" y="400" width="140" height="64" rx="6"/><text x="198" y="420" class="bd">jsteg.py</text><text x="198" y="437" class="sm">JSteg · JSteg-MF</text><text x="198" y="452" class="sm">parzystość |c|</text></g>
+    <g><rect class="bxo" x="336" y="400" width="140" height="64" rx="6"/><text x="348" y="420" class="bd">f5.py</text><text x="348" y="437" class="sm">kodowanie macierzowe</text><text x="348" y="452" class="sm">(1,3,2) + shrinkage</text></g>
+    <g><rect class="bxo" x="486" y="400" width="140" height="64" rx="6"/><text x="498" y="420" class="bd">nsf5.py</text><text x="498" y="437" class="sm">wet paper coding</text><text x="498" y="452" class="sm">syndrom 8-bit / blok</text></g>
+    <g><rect class="bxo" x="636" y="400" width="140" height="64" rx="6"/><text x="648" y="420" class="bd">outguess.py</text><text x="648" y="437" class="sm">RC4 · korekta</text><text x="648" y="452" class="sm">histogramu</text></g>
+    <!-- libs -->
+    <g><rect class="bx" x="36" y="536" width="150" height="38" rx="6"/><text x="48" y="559" class="bd">NumPy ≥ 1.24</text></g>
+    <g><rect class="bx" x="200" y="536" width="150" height="38" rx="6"/><text x="212" y="559" class="bd">Pillow ≥ 10</text></g>
+    <g><rect class="bx" x="364" y="536" width="150" height="38" rx="6"/><text x="376" y="559" class="bd">Flask 3.x</text></g>
+    <g><rect class="bx" x="528" y="536" width="396" height="38" rx="6"/><text x="540" y="559" class="bd">stdlib: zlib · struct · hashlib · random · tempfile</text></g>
+    <!-- arrows -->
+    <path class="ln" d="M176 128 V190" marker-end="url(#m1)"/><text x="182" y="160" class="xs mut">HTTP · multipart/JSON</text>
+    <path class="ln" d="M316 218 H340" marker-end="url(#m1)"/>
+    <path class="ln" d="M475 128 V190" marker-end="url(#m1)"/>
+    <path class="ln" d="M780 128 V190" marker-end="url(#m1)"/>
+    <path class="lnd" d="M900 128 V160 H940 V300 H924" marker-end="url(#m1)"/><text x="868" y="152" class="xs mut">bezpośrednio</text>
+    <path class="ln" d="M630 246 V276 H105 V306" marker-end="url(#m1)"/>
+    <path class="ln" d="M630 276 H256 V306" marker-end="url(#m1)"/>
+    <path class="ln" d="M630 276 H406 V306" marker-end="url(#m1)"/>
+    <path class="ln" d="M630 276 V306" marker-end="url(#m1)" transform="translate(-74,0)"/>
+    <path class="ln" d="M256 370 V400" marker-end="url(#m1)"/>
+    <path class="ln" d="M406 370 V400" marker-end="url(#m1)"/>
+    <path class="ln" d="M556 370 V400" marker-end="url(#m1)"/>
+    <path class="ln" d="M706 370 V400" marker-end="url(#m1)"/>
+    <path class="lnd" d="M786 338 H776" marker-end="url(#m1)"/>
+  </svg>
+  <figcaption>Rys. 1. Komponenty i zależności. Strzałka ciągła — wywołanie; przerywana — opcjonalne/bezpośrednie użycie. Metody JPEG (dolny rząd rdzenia) korzystają z <code>dct.py</code>, <code>jpeg.py</code>, <code>frame.py</code> i <code>images.py</code>.</figcaption>
+  </figure>
+
+  <h3>Zasady projektowe</h3>
+  <div class="grid g2">
+    <div class="card"><h4>Jeden kontrakt</h4><p>Każda metoda implementuje <code>capacity_bytes</code>, <code>embed_bytes</code>, <code>extract_bytes</code> i <code>extract_payload_bytes</code> na <b>bajtach plików</b>. Interfejsy nie znają szczegółów algorytmu.</p></div>
+    <div class="card"><h4>Wspólna ramka</h4><p>Wszystkie metody przenoszą ten sam format STEG v1 (13 B nagłówka + payload). Walidacja i CRC są w jednym miejscu — <code>frame.py</code>.</p></div>
+    <div class="card"><h4>Fail-fast i bez alokacji z niezaufanych danych</h4><p>Długość z nagłówka jest sprawdzana względem pojemności obrazu <b>przed</b> odczytem payloadu. Limity rozmiaru PNG są sprawdzane przed dekodowaniem pikseli.</p></div>
+    <div class="card"><h4>Bez nadpisywania</h4><p>Zapis przez plik tymczasowy i <code>os.link</code> (atomowo, błąd gdy cel istnieje) lub <code>os.replace</code> tylko przy jawnym <code>overwrite</code>.</p></div>
+  </div>
+
+  <h3 id="uml-wdrozenie">Diagram wdrożenia (UML)</h3>
+  <figure>
+  <svg viewBox="0 0 960 300" role="img" aria-label="Diagram wdrożenia">
+    <defs><marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <!-- node 1 -->
+    <path class="bx" d="M20 40 L36 24 H600 V250 L584 266 H20 Z"/><path class="ln" d="M584 40 L600 24 M584 40 V266 M20 40 H584"/>
+    <text x="32" y="60" class="bd">«device» Komputer użytkownika</text>
+    <rect class="bxa" x="40" y="80" width="170" height="80" rx="6"/><text x="52" y="100" class="bd">«execution env»</text><text x="52" y="118">Przeglądarka</text><text x="52" y="136" class="sm mut">UI + Web Worker</text>
+    <rect class="bxv" x="250" y="80" width="200" height="110" rx="6"/><text x="262" y="100" class="bd">«process» Python 3.10+</text><text x="262" y="118">Flask :5000</text><text x="262" y="136" class="sm mono">steganografia (pakiet)</text><text x="262" y="154" class="sm mut">albo CLI w terminalu</text>
+    <rect class="bxo" x="250" y="205" width="200" height="48" rx="6"/><text x="262" y="225" class="bd">System plików</text><text x="262" y="242" class="sm mut">nośniki, wyniki, /tmp (metody JPEG)</text>
+    <path class="ln" d="M210 120 H250" marker-end="url(#m2)"/><text x="214" y="112" class="xs mut">HTTP</text>
+    <path class="ln" d="M350 190 V205" marker-end="url(#m2)"/>
+    <rect class="bxw" x="480" y="80" width="100" height="60" rx="6"/><text x="490" y="100" class="sm bd">«artifact»</text><text x="490" y="116" class="sm">index.html</text><text x="490" y="130" class="sm">*.js, *.css</text>
+    <path class="lnd" d="M480 110 H450"/>
+    <!-- node 2 -->
+    <path class="bx" d="M640 40 L656 24 H940 V150 L924 166 H640 Z"/><path class="ln" d="M924 40 L940 24 M924 40 V166 M640 40 H924"/>
+    <text x="652" y="60" class="bd">«device» GitHub Actions</text>
+    <text x="652" y="82" class="sm">runner ubuntu-latest · Python 3.12</text>
+    <text x="652" y="100" class="sm mono">pip install -e ".[test]"</text>
+    <text x="652" y="118" class="sm mono">pytest --junitxml=reports/pytest.xml</text>
+    <text x="652" y="136" class="sm">artefakt: raport-pytest</text>
+    <!-- node 3 -->
+    <path class="bx" d="M640 196 L656 180 H940 V250 L924 266 H640 Z"/><path class="ln" d="M924 196 L940 180 M924 196 V266 M640 196 H924"/>
+    <text x="652" y="214" class="bd">«device» CDN jsdelivr</text><text x="652" y="234" class="sm">swagger-ui-dist@5 (tylko /api/v1/swagger)</text>
+    <path class="lnd" d="M210 150 C 400 290, 560 270, 640 230" marker-end="url(#m2)"/><text x="470" y="282" class="xs mut">opcjonalnie, wymaga internetu</text>
+  </svg>
+  <figcaption>Rys. 2. Wdrożenie: całość działa lokalnie w jednym procesie Pythona. CI uruchamia testy przy każdym pushu i PR.</figcaption>
+  </figure>
+</section>
+
+<section class="doc" id="moduly">
+  <h2>Mapa modułów</h2>
+  <table>
+    <tr><th>Plik</th><th>Linie</th><th>Odpowiedzialność</th><th>Kluczowe elementy</th></tr>
+    <tr><td><code>frame.py</code></td><td>126</td><td>format ramki STEG v1</td><td><code>pack</code>, <code>pack_bytes</code>, <code>parse_header</code>, <code>unpack</code>, <code>unpack_bytes</code>, <code>FrameError</code></td></tr>
+    <tr><td><code>lsb.py</code></td><td>135</td><td>zapis/odczyt bitów w LSB</td><td><code>capacity_bytes</code>, <code>embed_bits</code>, <code>embed_frame</code>, <code>extract_frame</code></td></tr>
+    <tr><td><code>images.py</code></td><td>133</td><td>bezpieczny odczyt i zapis PNG</td><td><code>load_cover</code>, <code>load_stego</code>, <code>save_png</code>, <code>ImageError</code></td></tr>
+    <tr><td><code>dct.py</code></td><td>250</td><td>matematyka JPEG</td><td><code>rgb_to_ycbcr</code>, <code>subsample_420</code>, <code>get_block</code>, <code>dct_block</code>, <code>quantize_block</code>, <code>zigzag_scan</code></td></tr>
+    <tr><td><code>jpeg.py</code></td><td>532</td><td>enkoder i czytnik baseline JPEG</td><td><code>write_jpeg</code>, <code>read_jpeg</code>, <code>png_to_jpeg</code>, <code>JpegCoefficients</code></td></tr>
+    <tr><td><code>jsteg.py</code></td><td>169</td><td>JSteg, JSteg-MF</td><td><code>embed_jpeg(…, mf=)</code>, <code>extract_jpeg</code></td></tr>
+    <tr><td><code>f5.py</code></td><td>221</td><td>F5</td><td><code>_permutation</code>, <code>_syndrome</code>, <code>_embed</code></td></tr>
+    <tr><td><code>nsf5.py</code></td><td>301</td><td>nsF5</td><td><code>_Layout</code>, <code>_min_changes</code>, <code>_rank</code></td></tr>
+    <tr><td><code>outguess.py</code></td><td>255</td><td>OutGuess</td><td><code>_RC4</code>, <code>_selection_order</code>, korekta histogramu</td></tr>
+    <tr><td><code>api.py</code></td><td>585</td><td>kontrakt i rejestr metod</td><td><code>SteganographyMethod</code>, <code>METHOD_REGISTRY</code>, <code>encode_file_payload</code></td></tr>
+    <tr><td><code>server.py</code></td><td>644</td><td>Flask, OpenAPI</td><td><code>create_app</code>, <code>build_openapi_spec</code>, <code>main</code></td></tr>
+    <tr><td><code>cli.py</code></td><td>400</td><td>wiersz poleceń</td><td><code>main(argv) → int</code></td></tr>
+    <tr><td><code>steganalysis/</code></td><td>424</td><td>analiza statystyczna</td><td><code>chi_square_analysis</code>, <code>dct_histogram_report</code>, <code>hellinger_distance</code>, detektory</td></tr>
+    <tr><td><code>static/</code></td><td>~1 400 (JS)</td><td>frontend</td><td><code>studio.js</code>, <code>method-registry.js</code>, <code>inspector.js</code>, <code>pixel-analysis.js</code></td></tr>
+  </table>
+</section>
+
+<section class="doc" id="klasy">
+  <h2>Model klas (UML)</h2>
+  <figure>
+  <svg viewBox="0 0 960 560" role="img" aria-label="Diagram klas">
+    <defs>
+      <marker id="inh" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto"><path class="tri" d="M0,0 L12,6 L0,12 z"/></marker>
+      <marker id="dia" viewBox="0 0 14 10" refX="1" refY="5" markerWidth="14" markerHeight="10" orient="auto"><path class="tri" d="M0,5 L7,0 L14,5 L7,10 z"/></marker>
+      <marker id="fdia" viewBox="0 0 14 10" refX="1" refY="5" markerWidth="14" markerHeight="10" orient="auto"><path class="dot" d="M0,5 L7,0 L14,5 L7,10 z"/></marker>
+      <marker id="op" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path class="ln" d="M0,0 L10,5 L0,10"/></marker>
+    </defs>
+    <!-- Registry -->
+    <rect class="bx" x="20" y="20" width="250" height="132" rx="4"/><rect class="bxv" x="20" y="20" width="250" height="26" rx="4"/>
+    <text x="145" y="38" text-anchor="middle" class="bd">SteganographyRegistry</text>
+    <text x="30" y="62" class="sm mono">- _methods: dict[str, Method]</text><path class="ln" d="M20 70 H270"/>
+    <text x="30" y="88" class="sm mono">+ register(method)</text><text x="30" y="104" class="sm mono">+ get(name): Method</text>
+    <text x="30" y="120" class="sm mono">+ names(): list[str]</text><text x="30" y="136" class="sm mono">+ metadata(): list[dict]</text>
+    <text x="145" y="168" text-anchor="middle" class="xs mut">METHOD_REGISTRY — instancja globalna</text>
+    <!-- Method abstract -->
+    <rect class="bx" x="340" y="20" width="330" height="200" rx="4"/><rect class="bxa" x="340" y="20" width="330" height="40" rx="4"/>
+    <text x="505" y="36" text-anchor="middle" class="xs">«abstract»</text><text x="505" y="52" text-anchor="middle" class="bd" font-style="italic">SteganographyMethod</text>
+    <text x="350" y="76" class="sm mono">+ name: str</text><text x="350" y="92" class="sm mono">+ metadata: MethodMetadata</text><path class="ln" d="M340 100 H670"/>
+    <text x="350" y="118" class="sm mono" font-style="italic">+ capacity_bytes(cover, **opt): dict</text>
+    <text x="350" y="134" class="sm mono" font-style="italic">+ embed_bytes(cover, payload, **opt): EncodedArtifact</text>
+    <text x="350" y="150" class="sm mono" font-style="italic">+ extract_bytes(encoded, **opt): str</text>
+    <text x="350" y="166" class="sm mono">+ extract_payload_bytes(encoded, **opt): bytes</text>
+    <text x="350" y="182" class="sm mono" font-style="italic">+ capacity(img) · embed(img, p) · extract(img)</text>
+    <text x="350" y="206" class="xs mut">metody JPEG rzucają NotImplementedError w embed/extract na ndarray</text>
+    <!-- metadata -->
+    <rect class="bx" x="730" y="20" width="210" height="112" rx="4"/><rect class="bxw" x="730" y="20" width="210" height="36" rx="4"/>
+    <text x="835" y="34" text-anchor="middle" class="xs">«dataclass, frozen»</text><text x="835" y="50" text-anchor="middle" class="bd">MethodMetadata</text>
+    <text x="740" y="72" class="sm mono">name, label: str</text><text x="740" y="88" class="sm mono">input_formats: tuple</text><text x="740" y="104" class="sm mono">output_format: str</text><text x="740" y="120" class="sm mono">options: dict</text>
+    <rect class="bx" x="730" y="150" width="210" height="84" rx="4"/><rect class="bxw" x="730" y="150" width="210" height="36" rx="4"/>
+    <text x="835" y="164" text-anchor="middle" class="xs">«dataclass, frozen»</text><text x="835" y="180" text-anchor="middle" class="bd">EncodedArtifact</text>
+    <text x="740" y="202" class="sm mono">data: bytes</text><text x="740" y="218" class="sm mono">media_type, extension: str</text>
+    <!-- relations top -->
+    <path class="ln" d="M270 80 H340" marker-start="url(#dia)"/><text x="282" y="74" class="xs">0..*</text>
+    <path class="ln" d="M670 76 H730" marker-start="url(#fdia)"/><text x="710" y="70" class="xs">1</text>
+    <path class="lnd" d="M670 190 H730" marker-end="url(#op)"/><text x="676" y="184" class="xs mut">«create»</text>
+    <!-- subclasses -->
+    <rect class="bx" x="20" y="300" width="150" height="54" rx="4"/><rect class="bxo" x="20" y="300" width="150" height="24" rx="4"/><text x="95" y="317" text-anchor="middle" class="bd">LSBMethod</text><text x="28" y="342" class="xs mono">name="lsb" · PNG→PNG</text>
+    <rect class="bx" x="190" y="300" width="160" height="54" rx="4"/><rect class="bxo" x="190" y="300" width="160" height="24" rx="4"/><text x="270" y="317" text-anchor="middle" class="bd" font-style="italic">_JpegMethod</text><text x="198" y="342" class="xs mono">mf: bool · adapter jsteg.py</text>
+    <rect class="bx" x="370" y="300" width="160" height="54" rx="4"/><rect class="bxo" x="370" y="300" width="160" height="24" rx="4"/><text x="450" y="317" text-anchor="middle" class="bd">F5Method</text><text x="378" y="342" class="xs mono">option key</text>
+    <rect class="bx" x="550" y="300" width="170" height="54" rx="4"/><rect class="bxo" x="550" y="300" width="170" height="24" rx="4"/><text x="635" y="317" text-anchor="middle" class="bd">OutGuessMethod</text><text x="558" y="342" class="xs mono">option key</text>
+    <rect class="bx" x="740" y="300" width="160" height="54" rx="4"/><rect class="bxo" x="740" y="300" width="160" height="24" rx="4"/><text x="820" y="317" text-anchor="middle" class="bd">NSF5Method</text><text x="748" y="342" class="xs mono">option key</text>
+    <rect class="bx" x="120" y="410" width="140" height="44" rx="4"/><rect class="bxo" x="120" y="410" width="140" height="24" rx="4"/><text x="190" y="427" text-anchor="middle" class="bd">JStegMethod</text><text x="128" y="448" class="xs mono">mf=False</text>
+    <rect class="bx" x="280" y="410" width="140" height="44" rx="4"/><rect class="bxo" x="280" y="410" width="140" height="24" rx="4"/><text x="350" y="427" text-anchor="middle" class="bd">JStegMFMethod</text><text x="288" y="448" class="xs mono">mf=True</text>
+    <!-- inheritance tree -->
+    <path class="ln" d="M505 220 V265"/><path class="ln" d="M95 265 H820"/>
+    <path class="ln" d="M505 265 V240" marker-end="url(#inh)"/>
+    <path class="ln" d="M95 300 V265 M270 300 V265 M450 300 V265 M635 300 V265 M820 300 V265"/>
+    <path class="ln" d="M190 410 V385 H350 V410 M270 385 V354"/><path class="ln" d="M270 385 V366" marker-end="url(#inh)"/>
+    <!-- errors -->
+    <rect class="bx" x="560" y="400" width="380" height="140" rx="4"/><text x="572" y="420" class="bd">Wyjątki i struktury danych</text>
+    <text x="572" y="442" class="sm mono">FrameError(ValueError)   — błędna ramka / pojemność</text>
+    <text x="572" y="460" class="sm mono">ImageError(ValueError)   — plik obrazu / zapis</text>
+    <text x="572" y="478" class="sm mono">MethodNotFoundError(KeyError)</text>
+    <text x="572" y="496" class="sm mono">FrameHeader(length, crc32)  .frame_size</text>
+    <text x="572" y="514" class="sm mono">JpegCoefficients(width, height,</text>
+    <text x="572" y="530" class="sm mono">   y_blocks, cb_blocks, cr_blocks)</text>
+    <text x="20" y="500" class="sm mut">Serwer i CLI zależą tylko od SteganographyMethod</text>
+    <text x="20" y="516" class="sm mut">(zasada odwrócenia zależności).</text>
+  </svg>
+  <figcaption>Rys. 3. Diagram klas warstwy usług (<code>api.py</code>). Romb pusty — agregacja (rejestr przechowuje metody), romb pełny — kompozycja (metoda posiada metadane), trójkąt — dziedziczenie.</figcaption>
+  </figure>
+  <p>Ciekawostka implementacyjna: rejestr zwraca metody posortowane alfabetycznie (<code>names()</code>), więc kolejność w UI i w OpenAPI to <code>f5, jsteg, jsteg-mf, lsb, nsf5, outguess</code>.</p>
+</section>
+
+<section class="doc" id="sekwencje">
+  <h2>Przepływy (UML sekwencji)</h2>
+  <h3>Ukrycie tekstu metodą F5 z aplikacji webowej</h3>
+  <figure>
+  <svg viewBox="0 0 960 560" role="img" aria-label="Diagram sekwencji osadzania">
+    <defs><marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="s1o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ln" d="M0,0 L10,5 L0,10"/></marker></defs>
+    <!-- heads -->
+    <g text-anchor="middle">
+      <rect class="bxa" x="20" y="14" width="110" height="34" rx="5"/><text x="75" y="35" class="bd">Użytkownik</text>
+      <rect class="bxa" x="150" y="14" width="120" height="34" rx="5"/><text x="210" y="35" class="bd">studio.js</text>
+      <rect class="bxv" x="290" y="14" width="130" height="34" rx="5"/><text x="355" y="35" class="bd">server.py</text>
+      <rect class="bxv" x="440" y="14" width="130" height="34" rx="5"/><text x="505" y="35" class="bd">F5Method</text>
+      <rect class="bxo" x="590" y="14" width="120" height="34" rx="5"/><text x="650" y="35" class="bd">frame.py</text>
+      <rect class="bxo" x="730" y="14" width="210" height="34" rx="5"/><text x="835" y="35" class="bd">f5.py · dct.py · jpeg.py</text>
+    </g>
+    <path class="life" d="M75 48 V540 M210 48 V540 M355 48 V540 M505 48 V540 M650 48 V540 M835 48 V540"/>
+    <rect class="act" x="204" y="80" width="12" height="420"/><rect class="act" x="349" y="110" width="12" height="360"/>
+    <rect class="act" x="499" y="150" width="12" height="290"/><rect class="act" x="829" y="268" width="12" height="150"/>
+    <path class="ln" d="M75 82 H204" marker-end="url(#s1)"/><text x="80" y="76" class="xs">plik PNG, tekst, klucz, Proceed</text>
+    <path class="ln" d="M216 112 H349" marker-end="url(#s1)"/><text x="220" y="106" class="xs">POST /api/v1/f5/embed</text>
+    <text x="366" y="130" class="xs">read_png_bytes() — walidacja</text>
+    <path class="ln" d="M361 152 H499" marker-end="url(#s1)"/><text x="366" y="146" class="xs">embed_bytes(cover, text, key)</text>
+    <text x="514" y="174" class="xs">capacity_bytes(cover) → 755 B</text>
+    <path class="ln" d="M511 196 H644" marker-end="url(#s1)"/><text x="516" y="190" class="xs">pack(text, capacity)</text>
+    <rect class="act" x="644" y="196" width="12" height="40"/><text x="660" y="214" class="xs">UTF-8, limit, CRC32</text>
+    <path class="lnd" d="M644 236 H511" marker-end="url(#s1o)"/><text x="560" y="230" class="xs">ramka (13 B + n)</text>
+    <path class="ln" d="M511 268 H829" marker-end="url(#s1)"/><text x="530" y="262" class="xs">embed_jpeg(tmp.png, tmp.jpg, ramka, key)</text>
+    <text x="822" y="290" text-anchor="end" class="xs">load_cover → YCbCr → 4:2:0</text>
+    <text x="822" y="306" text-anchor="end" class="xs">DCT → kwantyzacja → zig-zag</text>
+    <text x="822" y="322" text-anchor="end" class="xs">permutacja SHA-256(key)</text>
+    <text x="822" y="338" text-anchor="end" class="xs">kodowanie macierzowe</text>
+    <text x="822" y="354" text-anchor="end" class="xs">write_jpeg (Huffman)</text>
+    <path class="lnd" d="M829 418 H511" marker-end="url(#s1o)"/><text x="600" y="412" class="xs">plik JPEG w /tmp</text>
+    <path class="lnd" d="M499 440 H361" marker-end="url(#s1o)"/><text x="372" y="434" class="xs">EncodedArtifact(.jpg)</text>
+    <path class="lnd" d="M349 470 H216" marker-end="url(#s1o)"/><text x="222" y="464" class="xs">200 {success, image_base64}</text>
+    <text x="222" y="490" class="xs">sprawdza sygnaturę FF D8 FF</text>
+    <path class="lnd" d="M204 500 H75" marker-end="url(#s1o)"/><text x="86" y="494" class="xs">Blob → pobranie</text>
+    <rect class="bxr" x="290" y="510" width="420" height="26" rx="4"/><text x="300" y="528" class="xs">alt: FrameError / ImageError / ValueError → 400 {"error": …, "status": "error"}</text>
+  </svg>
+  <figcaption>Rys. 4. Sekwencja osadzania. Metody JPEG pracują na plikach tymczasowych, które są usuwane w bloku <code>__exit__</code>.</figcaption>
+  </figure>
+
+  <h3>Odczyt wiadomości z JPEG (CLI)</h3>
+  <figure>
+  <svg viewBox="0 0 960 360" role="img" aria-label="Diagram sekwencji odczytu">
+    <defs><marker id="s2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="s2o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ln" d="M0,0 L10,5 L0,10"/></marker></defs>
+    <g text-anchor="middle">
+      <rect class="bxa" x="20" y="14" width="130" height="34" rx="5"/><text x="85" y="35" class="bd">cli.main()</text>
+      <rect class="bxv" x="200" y="14" width="140" height="34" rx="5"/><text x="270" y="35" class="bd">JStegMethod</text>
+      <rect class="bxo" x="390" y="14" width="150" height="34" rx="5"/><text x="465" y="35" class="bd">jpeg.read_jpeg</text>
+      <rect class="bxo" x="590" y="14" width="150" height="34" rx="5"/><text x="665" y="35" class="bd">jsteg._extract…</text>
+      <rect class="bxo" x="790" y="14" width="150" height="34" rx="5"/><text x="865" y="35" class="bd">frame.py</text>
+    </g>
+    <path class="life" d="M85 48 V350 M270 48 V350 M465 48 V350 M665 48 V350 M865 48 V350"/>
+    <path class="ln" d="M85 80 H264" marker-end="url(#s2)"/><text x="92" y="74" class="xs">extract_bytes(plik.jpg)</text>
+    <path class="ln" d="M276 110 H459" marker-end="url(#s2)"/><text x="282" y="104" class="xs">read_jpeg(tmp.jpg)</text>
+    <text x="472" y="132" class="xs">markery DQT/SOF0/DHT/SOS</text><text x="472" y="146" class="xs">Huffman → bloki (bez IDCT)</text>
+    <path class="lnd" d="M459 164 H276" marker-end="url(#s2o)"/><text x="300" y="158" class="xs">JpegCoefficients</text>
+    <path class="ln" d="M276 192 H659" marker-end="url(#s2)"/><text x="300" y="186" class="xs">_extract_coefficients(bloki)</text>
+    <text x="672" y="214" class="xs">bity = |c| mod 2</text>
+    <path class="ln" d="M671 232 H859" marker-end="url(#s2)"/><text x="680" y="226" class="xs">parse_header(13 B)</text>
+    <text x="855" y="252" text-anchor="end" class="xs">MAGIC, VERSION, LENGTH</text>
+    <path class="ln" d="M671 272 H859" marker-end="url(#s2)"/><text x="680" y="266" class="xs">unpack_bytes(ramka)</text>
+    <text x="855" y="292" text-anchor="end" class="xs">CRC32, UTF-8</text>
+    <path class="lnd" d="M859 312 H91" marker-end="url(#s2o)"/><text x="400" y="306" class="xs">tekst → stdout (kod 0) · FrameError → stderr „Błąd: …” (kod 1)</text>
+  </svg>
+  <figcaption>Rys. 5. Sekwencja odczytu. Ekstrakcja nie dekoduje obrazu do pikseli — czyta bezpośrednio skwantyzowane współczynniki.</figcaption>
+  </figure>
+</section>
+
+<section class="doc" id="rest">
+  <h2>REST API</h2>
+  <p class="lead">Bazowy adres <code>http://localhost:5000/api/v1</code>. Wszystkie operacje na obrazach to <code>POST multipart/form-data</code>; odpowiedzi w JSON.</p>
+  <table>
+    <tr><th>Metoda i ścieżka</th><th>Pola formularza</th><th>Odpowiedź 200</th></tr>
+    <tr><td><code>GET /health</code></td><td>—</td><td><code>{"status":"ok","service":"steganografia","methods":[…]}</code></td></tr>
+    <tr><td><code>GET /openapi.json</code></td><td>—</td><td>specyfikacja OpenAPI 3 generowana z rejestru</td></tr>
+    <tr><td><code>GET /swagger</code></td><td>—</td><td>strona Swagger UI</td></tr>
+    <tr><td><code>POST /{metoda}/capacity</code></td><td><code>file</code> (PNG), opcjonalnie <code>key</code></td><td><code>{method, format, output_format, capacity_bytes, payload_capacity_bytes}</code></td></tr>
+    <tr><td><code>POST /{metoda}/embed</code></td><td><code>file</code> (PNG) + <b>dokładnie jedno</b> z: <code>text</code> lub <code>payload_file</code>; opcjonalnie <code>key</code></td><td><code>{success, method, format, image_base64, payload_length_chars}</code> lub dla pliku <code>{…, payload_type:"file", payload_filename, payload_length_bytes}</code></td></tr>
+    <tr><td><code>POST /{metoda}/extract</code></td><td><code>file</code> (PNG dla lsb, JPEG dla pozostałych), <code>payload_type</code> = <code>text</code> (domyślnie) | <code>file</code>, opcjonalnie <code>key</code></td><td><code>{success, method, text, length_chars, encoding}</code> lub <code>{…, payload_type:"file", filename, content_type, file_base64, payload_length_bytes}</code></td></tr>
+  </table>
+  <p><code>{metoda}</code> ∈ <code>lsb, jsteg, jsteg-mf, f5, nsf5, outguess</code>. GET/PUT/PATCH/DELETE na ścieżkach operacji zwracają 405.</p>
+  <h3>Przykłady (prawdziwe odpowiedzi serwera)</h3>
+<pre><code>$ curl -s -X POST localhost:5000/api/v1/f5/capacity -F "file=@oryginal.png"
+{"capacity_bytes":755,"format":"PNG","method":"f5","output_format":"JPEG","payload_capacity_bytes":742}
+
+$ curl -s -X POST localhost:5000/api/v1/f5/embed -F "file=@oryginal.png" -F "text=Tajne" -F "key=abc" \
+  | python -c "import sys,json,base64; d=json.load(sys.stdin); open('w.jpg','wb').write(base64.b64decode(d['image_base64']))"
+
+$ curl -s -X POST localhost:5000/api/v1/f5/extract -F "file=@w.jpg" -F "key=abc"
+{"encoding":"utf-8","length_chars":5,"method":"f5","success":true,"text":"Tajne"}
+
+$ curl -s -X POST localhost:5000/api/v1/f5/extract -F "file=@w.jpg" -F "key=zly"
+{"error":"Niepoprawne MAGIC","status":"error"}          <span class="c"># HTTP 400</span></code></pre>
+  <h3>Kody błędów</h3>
+  <table>
+    <tr><th>Kod</th><th>Kiedy</th></tr>
+    <tr><td>400</td><td>błędne dane: brak pola, zły format, <code>FrameError</code>, <code>ImageError</code>, każdy <code>ValueError</code></td></tr>
+    <tr><td>404</td><td>nieznana ścieżka (np. nieistniejąca metoda)</td></tr>
+    <tr><td>405</td><td>metoda HTTP inna niż POST na endpointach operacji</td></tr>
+    <tr><td>413</td><td>żądanie większe niż 64 MiB (<code>MAX_CONTENT_LENGTH</code>)</td></tr>
+    <tr><td>500</td><td>nieoczekiwany wyjątek; szczegóły tylko w logu serwera</td></tr>
+  </table>
+  <div class="note"><b>Uwaga do docs/api.md:</b> plik w repo wspomina metodę „DCT” i pole <code>image_shape</code>, których obecny serwer nie zwraca. Źródłem prawdy jest <code>/api/v1/openapi.json</code> — aktualizacja docs/api.md jest w S4-04.</div>
+</section>
+
+<section class="doc" id="pyapi">
+  <h2>API Pythona</h2>
+  <p class="lead">Najważniejsze funkcje eksportowane z pakietu <code>steganografia</code>.</p>
+  <table>
+    <tr><th>Funkcja</th><th>Opis</th></tr>
+    <tr><td><code>pack(text, *, capacity_bytes) → bytes</code></td><td>tekst → ramka STEG v1; <code>capacity_bytes</code> to pojemność całej ramki</td></tr>
+    <tr><td><code>unpack(frame, *, capacity_bytes) → str</code></td><td>walidacja ramki + CRC + UTF-8</td></tr>
+    <tr><td><code>parse_header(header13, *, capacity_bytes) → FrameHeader</code></td><td>sprawdza nagłówek bez alokacji payloadu</td></tr>
+    <tr><td><code>load_cover(path) → ndarray[H,W,3] uint8</code></td><td>PNG z normalizacją do RGB (przed osadzaniem)</td></tr>
+    <tr><td><code>load_stego(path) → ndarray</code></td><td>tylko 8-bit RGB PNG, bez konwersji (przed ekstrakcją)</td></tr>
+    <tr><td><code>save_png(image, path, *, overwrite=False)</code></td><td>bezstratny, atomowy zapis</td></tr>
+    <tr><td><code>capacity_bytes(img)</code>, <code>payload_capacity_bytes(img)</code></td><td>pojemność LSB: <code>H·W·3 // 8</code> i ta wartość − 13</td></tr>
+    <tr><td><code>embed_frame(img, frame) → ndarray</code>, <code>extract_frame(img) → bytes</code></td><td>LSB na tablicy NumPy (kopia, oryginał nietknięty)</td></tr>
+    <tr><td><code>rgb_to_ycbcr</code>, <code>subsample_420</code>, <code>get_block</code>, <code>dct_block</code>, <code>quantize_block</code>, <code>zigzag_scan</code></td><td>etapy pipeline'u JPEG</td></tr>
+    <tr><td><code>write_jpeg(path, *, width, height, y_blocks, cb_blocks, cr_blocks)</code></td><td>zapis baseline JPEG z gotowych bloków zig-zag</td></tr>
+    <tr><td><code>read_jpeg(path) → JpegCoefficients</code></td><td>odczyt współczynników bez IDCT</td></tr>
+    <tr><td><code>png_to_jpeg(src, dst, *, overwrite=False)</code></td><td>cały pipeline PNG → JPEG</td></tr>
+    <tr><td><code>jsteg_embed_jpeg</code>, <code>f5_embed_jpeg</code>, <code>nsf5_embed_jpeg</code>, <code>outguess_embed_jpeg</code> (+ <code>*_extract_jpeg</code>, <code>*_capacity_*</code>)</td><td>funkcje plikowe metod JPEG</td></tr>
+    <tr><td><code>chi_square_analysis</code>, <code>dct_histogram_report</code>, <code>hellinger_distance</code>, <code>calibrate_*_detector</code>, <code>*_detection</code></td><td>steganaliza</td></tr>
+  </table>
+<pre><code><span class="k">from</span> steganografia <span class="k">import</span> load_cover, load_stego, save_png, pack, unpack, capacity_bytes, embed_frame, extract_frame
+
+cover = load_cover(<span class="s">"oryginal.png"</span>)
+frame = pack(<span class="s">"Zażółć gęślą jaźń"</span>, capacity_bytes=capacity_bytes(cover))
+save_png(embed_frame(cover, frame), <span class="s">"wiadomosc.png"</span>)
+
+stego = load_stego(<span class="s">"wiadomosc.png"</span>)
+<span class="k">print</span>(unpack(extract_frame(stego), capacity_bytes=capacity_bytes(stego)))
+
+<span class="c"># ta sama operacja przez wspólny kontrakt — działa dla każdej metody</span>
+<span class="k">from</span> steganografia.api <span class="k">import</span> METHOD_REGISTRY
+f5 = METHOD_REGISTRY.get(<span class="s">"f5"</span>)
+art = f5.embed_bytes(open(<span class="s">"oryginal.png"</span>, <span class="s">"rb"</span>).read(), <span class="s">"Tajne"</span>, key=<span class="s">"abc"</span>)
+<span class="k">print</span>(f5.extract_bytes(art.data, key=<span class="s">"abc"</span>))</code></pre>
+  <div class="danger"><b>Znany błąd (BUG-01):</b> <code>rs_analysis</code> jest wymieniony w <code>__all__</code> i opisany w README, ale nie istnieje. <code>from steganografia import rs_analysis</code> daje <code>ImportError</code>, a <code>from steganografia import *</code> — <code>AttributeError</code>. Importuj funkcje po nazwie.</div>
+</section>
+
+<section class="doc" id="rozszerzanie">
+  <h2>Jak dodać nową metodę</h2>
+  <ol class="steps">
+    <li>Napisz moduł algorytmu w <code>src/steganografia/</code> z funkcjami plikowymi (wzoruj się na <code>f5.py</code>): pojemność, <code>embed_jpeg</code>, <code>extract_jpeg</code>. Używaj <code>parse_header</code>/<code>unpack_bytes</code> z <code>frame.py</code> zamiast własnej walidacji.</li>
+    <li>W <code>api.py</code> dodaj klasę dziedziczącą po <code>SteganographyMethod</code> z unikalnym <code>name</code> i <code>MethodMetadata</code> (formaty, opcje).</li>
+    <li>Zarejestruj ją: <code>METHOD_REGISTRY.register(MojaMetoda())</code>.</li>
+    <li>Gotowe: serwer utworzy trasy <code>/api/v1/moja/…</code>, OpenAPI je opisze, UI pokaże metodę na liście, a CLI doda podkomendę <code>steganografia moja …</code>.</li>
+    <li>Dopisz metodę do parametryzacji w <code>tests/test_dct_methods.py</code> i dodaj testy własne (zły klucz, granica pojemności).</li>
+  </ol>
+<pre><code><span class="k">class</span> MojaMetoda(SteganographyMethod):
+    name = <span class="s">"moja"</span>
+    metadata = MethodMetadata(name=<span class="s">"moja"</span>, label=<span class="s">"Moja"</span>, input_formats=(<span class="s">"png"</span>,),
+                              output_format=<span class="s">"jpeg"</span>,
+                              options={<span class="s">"key"</span>: {<span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"required"</span>: False, <span class="s">"default"</span>: <span class="s">"x"</span>}})
+    <span class="k">def</span> capacity_bytes(self, cover, **opt): ...          <span class="c"># {"capacity_bytes": n, "payload_capacity_bytes": n-13}</span>
+    <span class="k">def</span> embed_bytes(self, cover, payload, **opt): ...   <span class="c"># → EncodedArtifact(data, "image/jpeg", ".jpg")</span>
+    <span class="k">def</span> extract_bytes(self, encoded, **opt): ...       <span class="c"># → str</span>
+    <span class="k">def</span> extract_payload_bytes(self, encoded, **opt): ... <span class="c"># → bytes (dla plików)</span>
+    <span class="c"># capacity/embed/extract na ndarray są abstrakcyjne — dla metod JPEG: raise NotImplementedError</span>
+
+METHOD_REGISTRY.register(MojaMetoda())</code></pre>
+</section>
+
+<section class="doc" id="frontend">
+  <h2>Frontend od środka</h2>
+  <div class="grid g2">
+    <div class="card"><h4>method-registry.js — odkrywanie metod</h4><p>Pobiera równolegle <code>/api/v1/health</code> i <code>/api/v1/openapi.json</code>. Metodę uznaje za dostępną tylko wtedy, gdy OpenAPI opisuje dla niej poprawny schemat <code>multipart/form-data</code> z polami <code>file</code> i <code>text</code>. Odrzuca serwery inne niż <code>/api/v1</code>, więc metadane nie mogą przekierować uploadu. Opcje o nazwach <i>key/password/secret/token</i> są traktowane jako sekretne.</p></div>
+    <div class="card"><h4>studio.js — formularz</h4><p><code>validateUpload</code> sprawdza MIME/rozszerzenie zgodne z metodą, niepusty plik i limit 10 MB. <code>decodeImage</code> akceptuje odpowiedź tylko, gdy <code>success === true</code>, metoda i format się zgadzają, a pierwsze bajty to sygnatura PNG (<code>89 50 4E 47 0D 0A 1A 0A</code>) lub JPEG (<code>FF D8 FF</code>).</p></div>
+    <div class="card"><h4>inspector.js + Web Worker</h4><p>Dekoduje oba obrazy do RGBA w przeglądarce i przekazuje bufory do workera (transferable). <code>pixel-analysis.js</code> liczy zmienione piksele i odwrócone bity tablicą popcount (256 wpisów), alfa jest ignorowana, limit 4 Mpx. Podgląd jest skalowany do maks. 1000×700.</p></div>
+    <div class="card"><h4>Pliki do sprzątnięcia</h4><p><code>app.js</code> nie jest ładowany przez <code>index.html</code>, a <code>static/README.txt</code> opisuje stare endpointy <code>/api/crypt</code>. Oba elementy są na liście S4-04.</p></div>
+  </div>
+</section>
+
+<section class="doc" id="testy">
+  <h2>Testy i CI</h2>
+  <table>
+    <tr><th>Plik</th><th>Testy</th><th>Zakres</th></tr>
+    <tr><td><code>tests/test_karty_s1.py</code></td><td>46</td><td>ramka (wektor CRC <code>123456789 → 0xCBF43926</code>, MAGIC, wersja, LENGTH, ucięcia), LSB bit po bicie, PNG i limity</td></tr>
+    <tr><td><code>tests/test_dct_methods.py</code></td><td>31</td><td>wspólne API dla LSB/JSteg/JSteg-MF/F5, granice pojemności, CRC po zmianie współczynnika, wymiary niepodzielne przez 8, klucz F5, CLI metod</td></tr>
+    <tr><td><code>tests/test_cli.py</code></td><td>13</td><td>komendy LSB, polskie znaki, pliki tekstowe, nadpisywanie, kody wyjścia, uruchomienie jako moduł</td></tr>
+    <tr><td><code>tests/test_api_s3.py</code></td><td>7</td><td>scenariusz „osadź → zapisz → restart → odczytaj → JPEG Q50 → błąd”, endpointy HTTP, OpenAPI</td></tr>
+    <tr><td><code>tests/test_steganografia.py</code></td><td>4</td><td>pełny przepływ, ochrona przed nadpisaniem, odrzucanie formatów</td></tr>
+  </table>
+<pre><code>python -m pytest -q                               <span class="c"># 101 passed</span>
+python -m pytest -v                               <span class="c"># z nazwami testów</span>
+python -m pytest -q --junitxml=reports/pytest.xml <span class="c"># raport jak w CI</span></code></pre>
+  <p><b>CI:</b> <code>.github/workflows/pytest.yml</code> uruchamia testy przy każdym <i>push</i>, <i>pull request</i> i ręcznie, na Ubuntu z Pythonem 3.12, i zapisuje artefakt <code>raport-pytest</code> także przy niepowodzeniu.</p>
+  <div class="warnbox"><b>Luki w pokryciu</b> (karta S4-01): nsF5, OutGuess, payload plikowy, moduł steganalizy, prymitywy DCT, JPEG nie-baseline na wejściu. README nadal podaje „46 passed” — do aktualizacji.</div>
+</section>
+
+<div class="part-title">Część III · Niski poziom — bity, bajty, współczynniki</div>
+<style>.qt{width:auto;font-family:var(--mono);font-size:12px;margin:6px 0}.qt td{padding:2px 6px;text-align:right;border:1px solid var(--line)}</style>
+
+<section class="doc" id="ramka">
+  <h2>Ramka STEG v1 bajt po bajcie</h2>
+  <p class="lead">Wspólny format danych dla wszystkich sześciu metod — <code>frame.py</code>, specyfikacja w <code>docs/frame-v1.md</code>.</p>
+  <figure>
+  <svg viewBox="0 0 960 190" role="img" aria-label="Układ ramki STEG v1">
+    <g class="mono">
+    <rect class="bxa" x="20" y="40" width="240" height="56"/><text x="140" y="64" text-anchor="middle" class="bd">MAGIC · 4 B</text><text x="140" y="84" text-anchor="middle" class="sm">53 54 45 47 („STEG”)</text>
+    <rect class="bxv" x="260" y="40" width="80" height="56"/><text x="300" y="64" text-anchor="middle" class="bd">VER</text><text x="300" y="84" text-anchor="middle" class="sm">01</text>
+    <rect class="bxw" x="340" y="40" width="200" height="56"/><text x="440" y="64" text-anchor="middle" class="bd">LENGTH · 4 B</text><text x="440" y="84" text-anchor="middle" class="sm">big-endian, bajty</text>
+    <rect class="bxo" x="540" y="40" width="200" height="56"/><text x="640" y="64" text-anchor="middle" class="bd">CRC32 · 4 B</text><text x="640" y="84" text-anchor="middle" class="sm">payloadu, big-endian</text>
+    <rect class="bx" x="740" y="40" width="200" height="56"/><text x="840" y="64" text-anchor="middle" class="bd">PAYLOAD</text><text x="840" y="84" text-anchor="middle" class="sm">LENGTH bajtów</text>
+    </g>
+    <g class="sm mut"><text x="20" y="32">offset 0</text><text x="260" y="32">4</text><text x="340" y="32">5</text><text x="540" y="32">9</text><text x="740" y="32">13</text></g>
+    <text x="20" y="126" class="bd">Przykład — tekst „ą” (UTF-8: C4 85):</text>
+    <text x="20" y="150" class="mono">53 54 45 47 │ 01 │ 00 00 00 02 │ 73 9D 77 1A │ C4 85</text>
+    <text x="20" y="172" class="sm mut">15 bajtów = 120 bitów = 120 próbek RGB w LSB (40 pikseli). Pusta wiadomość: 13 B, CRC = 00 00 00 00.</text>
+  </svg>
+  <figcaption>Rys. 6. Nagłówek ma stałe 13 bajtów (<code>struct.Struct(">4sBII")</code>), bez wyrównania. Bity każdego bajtu są przesyłane od najstarszego (MSB-first).</figcaption>
+  </figure>
+  <h3>Parametry CRC</h3>
+  <p>CRC-32/ISO-HDLC, zgodne z <code>zlib.crc32</code>: wielomian <code>0x04C11DB7</code> (reflected <code>0xEDB88320</code>), init <code>0xFFFFFFFF</code>, RefIn/RefOut = true, XorOut <code>0xFFFFFFFF</code>. Wartość kontrolna: <code>crc32(b"123456789") = 0xCBF43926</code> — sprawdzana w testach niezależną implementacją bitową.</p>
+  <h3>Kolejność walidacji przy odczycie (diagram aktywności)</h3>
+  <figure>
+  <svg viewBox="0 0 960 250" role="img" aria-label="Walidacja ramki">
+    <defs><marker id="v1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <circle cx="30" cy="70" r="10" class="dot"/>
+    <g>
+      <path class="bxa" d="M75 70 l45 -26 l45 26 l-45 26 z"/><text x="120" y="74" text-anchor="middle" class="xs">≥ 13 B?</text>
+      <path class="bxa" d="M195 70 l45 -26 l45 26 l-45 26 z"/><text x="240" y="74" text-anchor="middle" class="xs">MAGIC?</text>
+      <path class="bxa" d="M315 70 l45 -26 l45 26 l-45 26 z"/><text x="360" y="74" text-anchor="middle" class="xs">VER = 1?</text>
+      <path class="bxa" d="M435 70 l55 -30 l55 30 l-55 30 z"/><text x="490" y="68" text-anchor="middle" class="xs">LENGTH ≤</text><text x="490" y="80" text-anchor="middle" class="xs">pojemność−13?</text>
+      <path class="bxa" d="M575 70 l45 -26 l45 26 l-45 26 z"/><text x="620" y="74" text-anchor="middle" class="xs">kompletna?</text>
+      <path class="bxa" d="M695 70 l45 -26 l45 26 l-45 26 z"/><text x="740" y="74" text-anchor="middle" class="xs">CRC32 ok?</text>
+      <path class="bxa" d="M815 70 l45 -26 l45 26 l-45 26 z"/><text x="860" y="74" text-anchor="middle" class="xs">UTF-8?</text>
+    </g>
+    <path class="ln" d="M40 70 H75" marker-end="url(#v1)"/><path class="ln" d="M165 70 H195" marker-end="url(#v1)"/><path class="ln" d="M285 70 H315" marker-end="url(#v1)"/>
+    <path class="ln" d="M405 70 H435" marker-end="url(#v1)"/><path class="ln" d="M545 70 H575" marker-end="url(#v1)"/><path class="ln" d="M665 70 H695" marker-end="url(#v1)"/><path class="ln" d="M785 70 H815" marker-end="url(#v1)"/>
+    <path class="ln" d="M905 70 H935 V120" marker-end="url(#v1)"/><circle cx="935" cy="132" r="11" class="tri"/><circle cx="935" cy="132" r="6" class="dot"/><text x="900" y="160" class="xs">tekst / bajty</text>
+    <g class="xs">
+      <path class="ln" d="M120 96 V150" marker-end="url(#v1)"/><path class="ln" d="M240 96 V150" marker-end="url(#v1)"/><path class="ln" d="M360 96 V150" marker-end="url(#v1)"/><path class="ln" d="M490 100 V150" marker-end="url(#v1)"/><path class="ln" d="M620 96 V150" marker-end="url(#v1)"/><path class="ln" d="M740 96 V150" marker-end="url(#v1)"/><path class="ln" d="M860 96 V150" marker-end="url(#v1)"/>
+      <rect class="bxr" x="70" y="150" width="830" height="80" rx="8"/>
+      <text x="80" y="170" class="sm bd">FrameError z czytelnym komunikatem — payload nie jest jeszcze alokowany przy pierwszych czterech kontrolach</text>
+      <text x="80" y="190">„Ucięty nagłówek” · „Niepoprawne MAGIC” · „Nieobsługiwana wersja ramki” · „LENGTH (n B) przekracza pojemność obrazu”</text>
+      <text x="80" y="208">„Ucięty payload” / „Nadmiarowe bajty po ramce” · „Niezgodna suma CRC32” · „Payload nie jest poprawnym UTF-8”</text>
+    </g>
+    <text x="160" y="40" class="xs mut">tak →</text>
+  </svg>
+  <figcaption>Rys. 7. Limit LENGTH pochodzi z rozmiaru obrazu, nigdy z niezaufanego nagłówka — dzięki temu spreparowany plik nie wymusi alokacji 4 GB.</figcaption>
+  </figure>
+  <p>Przy ekstrakcji LSB najpierw czytane są tylko 104 bity nagłówka; dopiero po <code>parse_header</code> program wie, ile bitów pobrać dalej (<code>header.frame_size × 8</code>).</p>
+</section>
+
+<section class="doc" id="lsb">
+  <h2>LSB bit po bicie</h2>
+  <p>Obraz <code>uint8</code> o kształcie <code>(H, W, 3|4)</code> jest spłaszczany w kolejności C: wiersz po wierszu, piksel po pikselu, w pikselu R → G → B (alfa pomijana). Bit ramki <i>i</i> trafia do najmłodszego bitu próbki <i>i</i>:</p>
+<pre><code>próbka' = (próbka &amp; 0xFE) | bit          <span class="c"># zapis</span>
+bit     =  próbka' &amp; 0x01                <span class="c"># odczyt</span>
+pojemność_ramki = H · W · 3 // 8 bajtów  <span class="c"># niepełny bajt na końcu jest pomijany</span></code></pre>
+  <figure>
+  <svg viewBox="0 0 960 230" role="img" aria-label="Przykład LSB">
+    <text x="20" y="26" class="bd">Ramka „Hi” zaczyna się od bajtu 0x53 = 0101 0011 („S”), potem 0x54 („T”)…  Nośnik: każdy piksel = (200, 13, 77)</text>
+    <g class="mono">
+      <text x="20" y="62" class="sm mut">bit ramki</text>
+      <text x="20" y="98" class="sm mut">przed</text>
+      <text x="20" y="134" class="sm mut">po</text>
+      <text x="20" y="170" class="sm mut">zmiana</text>
+    </g>
+    <g class="mono" text-anchor="middle">
+      <!-- 9 samples -->
+      <rect class="bxa" x="100" y="40" width="270" height="146" rx="6" opacity=".35"/><text x="235" y="205" class="sm">piksel (0,0)</text>
+      <rect class="bxa" x="380" y="40" width="270" height="146" rx="6" opacity=".35"/><text x="515" y="205" class="sm">piksel (0,1)</text>
+      <rect class="bxa" x="660" y="40" width="270" height="146" rx="6" opacity=".35"/><text x="795" y="205" class="sm">piksel (0,2)</text>
+      <text x="145" y="62" class="bd">0</text><text x="235" y="62" class="bd">1</text><text x="325" y="62" class="bd">0</text>
+      <text x="425" y="62" class="bd">1</text><text x="515" y="62" class="bd">0</text><text x="605" y="62" class="bd">0</text>
+      <text x="705" y="62" class="bd">1</text><text x="795" y="62" class="bd">1</text><text x="885" y="62" class="bd">0</text>
+      <text x="145" y="98" class="sm">R 200 1100100<tspan class="bd">0</tspan></text><text x="235" y="98" class="sm">G 13 0000110<tspan class="bd">1</tspan></text><text x="325" y="98" class="sm">B 77 0100110<tspan class="bd">1</tspan></text>
+      <text x="425" y="98" class="sm">R 200 …<tspan class="bd">0</tspan></text><text x="515" y="98" class="sm">G 13 …<tspan class="bd">1</tspan></text><text x="605" y="98" class="sm">B 77 …<tspan class="bd">1</tspan></text>
+      <text x="705" y="98" class="sm">R 200 …<tspan class="bd">0</tspan></text><text x="795" y="98" class="sm">G 13 …<tspan class="bd">1</tspan></text><text x="885" y="98" class="sm">B 77 …<tspan class="bd">1</tspan></text>
+      <text x="145" y="134" class="sm">200</text><text x="235" y="134" class="sm">13</text><text x="325" y="134" class="sm">76</text>
+      <text x="425" y="134" class="sm">201</text><text x="515" y="134" class="sm">12</text><text x="605" y="134" class="sm">76</text>
+      <text x="705" y="134" class="sm">201</text><text x="795" y="134" class="sm">13</text><text x="885" y="134" class="sm">76</text>
+      <text x="145" y="170" class="sm">0</text><text x="235" y="170" class="sm">0</text><text x="325" y="170" class="sm">−1</text>
+      <text x="425" y="170" class="sm">+1</text><text x="515" y="170" class="sm">−1</text><text x="605" y="170" class="sm">−1</text>
+      <text x="705" y="170" class="sm">+1</text><text x="795" y="170" class="sm">0</text><text x="885" y="170" class="sm">−1</text>
+    </g>
+  </svg>
+  <figcaption>Rys. 8. Wynik zweryfikowany kodem <code>embed_frame</code>. Każda próbka zmienia się o najwyżej ±1, a średnio połowa bitów już ma właściwą wartość.</figcaption>
+  </figure>
+  <p>Kluczowe właściwości: zmiana o ±1 jest niewidoczna dla oka, ale wyrównuje liczebności par wartości (2k, 2k+1) — to dokładnie ślad, który wykrywa test chi-kwadrat. Wyższe bity i niewykorzystane próbki nie są ruszane (sprawdza to test <code>test_s102_brak_modyfikacji_niewykorzystanych_probek_i_wyzszych_bitow</code>).</p>
+</section>
+
+<section class="doc" id="png">
+  <h2>Obsługa PNG i limity</h2>
+  <table>
+    <tr><th>Krok</th><th>Co robi <code>images._read_png</code></th></tr>
+    <tr><td>1. Rozmiar pliku</td><td><code>os.fstat</code> przed czytaniem — odrzuca &gt; 64 MiB</td></tr>
+    <tr><td>2. Format</td><td>Pillow rozpoznaje po zawartości (nie po rozszerzeniu); tylko <code>PNG</code></td></tr>
+    <tr><td>3. Wymiary</td><td>z nagłówka, przed dekodowaniem: ≤ 16 000 000 px i ≤ 16 384 px na bok; <code>DecompressionBombWarning</code> zamieniany na błąd</td></tr>
+    <tr><td>4. Głębia</td><td>bajt 24 nagłówka IHDR czytany ręcznie — Pillow potrafi „po cichu” zredukować 16 bitów do 8, co zmieniłoby LSB</td></tr>
+    <tr><td>5. Tryb</td><td>1, L, LA, P, RGB, RGBA; APNG odrzucany</td></tr>
+    <tr><td>6a. <code>load_cover</code></td><td><code>convert("RGB")</code>: skala szarości → 3 kanały, paleta rozwijana, alfa odrzucana bez mieszania z tłem</td></tr>
+    <tr><td>6b. <code>load_stego</code></td><td>wymaga dokładnie 8-bit RGB — <b>żadnej konwersji</b> przed odczytem bitów</td></tr>
+  </table>
+  <p><b>Atomowy zapis</b> (<code>save_png</code>, <code>png_to_jpeg</code>): dane trafiają do pliku tymczasowego w katalogu docelowym, następnie <code>os.link(tmp, cel)</code> — operacja atomowa, która kończy się <code>FileExistsError</code>, gdy cel istnieje (także gdy powstał w międzyczasie). Przy <code>overwrite=True</code> używany jest <code>os.replace</code>. Plik tymczasowy jest zawsze usuwany w <code>finally</code>.</p>
+</section>
+
+<section class="doc" id="jpeg">
+  <h2>Własny kodek JPEG</h2>
+  <p class="lead">Baseline JPEG (SOF0), 8 bitów, 3 komponenty, subsampling 4:2:0, standardowe tablice z załącznika K normy ITU-T T.81.</p>
+  <figure>
+  <svg viewBox="0 0 960 250" role="img" aria-label="Pipeline JPEG">
+    <defs><marker id="j1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <g text-anchor="middle">
+      <rect class="bx" x="10" y="30" width="96" height="54" rx="27"/><text x="58" y="54" class="sm bd">PNG</text><text x="58" y="70" class="xs">load_cover</text>
+      <rect class="bxa" x="122" y="30" width="104" height="54" rx="6"/><text x="174" y="54" class="sm bd">RGB→YCbCr</text><text x="174" y="70" class="xs">float64</text>
+      <rect class="bxa" x="242" y="30" width="96" height="54" rx="6"/><text x="290" y="54" class="sm bd">4:2:0</text><text x="290" y="70" class="xs">średnia 2×2</text>
+      <rect class="bxa" x="354" y="30" width="96" height="54" rx="6"/><text x="402" y="54" class="sm bd">bloki 8×8</text><text x="402" y="70" class="xs">pad krawędzią</text>
+      <rect class="bxa" x="466" y="30" width="96" height="54" rx="6"/><text x="514" y="54" class="sm bd">DCT-II</text><text x="514" y="70" class="xs">−128, B·X·Bᵀ</text>
+      <rect class="bxa" x="578" y="30" width="96" height="54" rx="6"/><text x="626" y="54" class="sm bd">kwantyzacja</text><text x="626" y="70" class="xs">rint(F/Q)</text>
+      <rect class="bxa" x="690" y="30" width="80" height="54" rx="6"/><text x="730" y="54" class="sm bd">zig-zag</text><text x="730" y="70" class="xs">64 → wektor</text>
+      <rect class="bxv" x="786" y="22" width="164" height="70" rx="6"/><text x="868" y="46" class="sm bd">✦ osadzanie</text><text x="868" y="62" class="xs">JSteg / F5 / nsF5 /</text><text x="868" y="76" class="xs">OutGuess zmieniają AC</text>
+      <rect class="bxo" x="786" y="140" width="164" height="54" rx="6"/><text x="868" y="164" class="sm bd">write_jpeg</text><text x="868" y="180" class="xs">DPCM · RLE · Huffman</text>
+      <rect class="bx" x="600" y="140" width="150" height="54" rx="27"/><text x="675" y="164" class="sm bd">plik .jpg</text><text x="675" y="180" class="xs">SOI…EOI</text>
+      <rect class="bxo" x="410" y="140" width="150" height="54" rx="6"/><text x="485" y="164" class="sm bd">read_jpeg</text><text x="485" y="180" class="xs">markery + Huffman</text>
+      <rect class="bxv" x="220" y="140" width="150" height="54" rx="6"/><text x="295" y="164" class="sm bd">✦ ekstrakcja</text><text x="295" y="180" class="xs">bez IDCT i RGB</text>
+      <rect class="bx" x="40" y="140" width="140" height="54" rx="27"/><text x="110" y="164" class="sm bd">ramka STEG</text><text x="110" y="180" class="xs">parse + CRC</text>
+    </g>
+    <path class="ln" d="M106 57 H122" marker-end="url(#j1)"/><path class="ln" d="M226 57 H242" marker-end="url(#j1)"/><path class="ln" d="M338 57 H354" marker-end="url(#j1)"/><path class="ln" d="M450 57 H466" marker-end="url(#j1)"/><path class="ln" d="M562 57 H578" marker-end="url(#j1)"/><path class="ln" d="M674 57 H690" marker-end="url(#j1)"/><path class="ln" d="M770 57 H786" marker-end="url(#j1)"/>
+    <path class="ln" d="M868 92 V140" marker-end="url(#j1)"/><path class="ln" d="M786 167 H750" marker-end="url(#j1)"/><path class="ln" d="M600 167 H560" marker-end="url(#j1)"/><path class="ln" d="M410 167 H370" marker-end="url(#j1)"/><path class="ln" d="M220 167 H180" marker-end="url(#j1)"/>
+    <text x="20" y="232" class="sm mut">Górny tor — nadawca (embed). Dolny tor — odbiorca (extract). Stratne są tylko 4:2:0 i kwantyzacja; osadzanie odbywa się już po nich, więc nie ginie.</text>
+  </svg>
+  <figcaption>Rys. 9. Pipeline JPEG (diagram aktywności). Wszystkie metody JPEG korzystają z tych samych funkcji: <code>_encode_component</code>, <code>write_jpeg</code>, <code>read_jpeg</code>.</figcaption>
+  </figure>
+
+  <h3 id="jpeg-dct">YCbCr, subsampling, DCT, kwantyzacja</h3>
+<pre><code>Y  =  0.299·R + 0.587·G + 0.114·B
+Cb = −0.168736·R − 0.331264·G + 0.5·B + 128
+Cr =  0.5·R − 0.418688·G − 0.081312·B + 128        <span class="c"># np. (200,13,77) → (76.21, 128.45, 216.30)</span></code></pre>
+  <p><b>4:2:0</b>: Y w pełnej rozdzielczości, Cb i Cr uśredniane w kwadratach 2×2 (nieparzysty wymiar — powielenie ostatniego wiersza/kolumny). <b>Bloki</b>: składowa dzielona na bloki 8×8 w kolejności wierszowej; brzegi dopełniane powieleniem krawędzi (<code>np.pad(mode="edge")</code>).</p>
+  <p><b>DCT-II</b> liczona jest własną macierzą bazową <code>B</code> (8×8), bez SciPy: <code>F = B · (X − 128) · Bᵀ</code>, gdzie <code>B[u][x] = ½ · C(u) · cos((2x+1)·u·π/16)</code>, <code>C(0) = 1/√2</code>, <code>C(u&gt;0) = 1</code>. Pierwszy wiersz bazy to stała 0,3536 (=1/√8) — stąd <code>F[0,0]</code> (DC) jest proporcjonalne do średniej jasności bloku.</p>
+  <p><b>Kwantyzacja</b>: <code>Fq = rint(F / Q)</code> — jedyny (obok 4:2:0) stratny krok. Tablice (Annex K, jakość ≈ 50):</p>
+  <div class="grid g2"><div><b>Luminancja (Y)</b><table class="qt"><tr><td>16</td><td>11</td><td>10</td><td>16</td><td>24</td><td>40</td><td>51</td><td>61</td></tr><tr><td>12</td><td>12</td><td>14</td><td>19</td><td>26</td><td>58</td><td>60</td><td>55</td></tr><tr><td>14</td><td>13</td><td>16</td><td>24</td><td>40</td><td>57</td><td>69</td><td>56</td></tr><tr><td>14</td><td>17</td><td>22</td><td>29</td><td>51</td><td>87</td><td>80</td><td>62</td></tr><tr><td>18</td><td>22</td><td>37</td><td>56</td><td>68</td><td>109</td><td>103</td><td>77</td></tr><tr><td>24</td><td>35</td><td>55</td><td>64</td><td>81</td><td>104</td><td>113</td><td>92</td></tr><tr><td>49</td><td>64</td><td>78</td><td>87</td><td>103</td><td>121</td><td>120</td><td>101</td></tr><tr><td>72</td><td>92</td><td>95</td><td>98</td><td>112</td><td>100</td><td>103</td><td>99</td></tr></table></div><div><b>Chrominancja (Cb, Cr)</b><table class="qt"><tr><td>17</td><td>18</td><td>24</td><td>47</td><td>99</td><td>99</td><td>99</td><td>99</td></tr><tr><td>18</td><td>21</td><td>26</td><td>66</td><td>99</td><td>99</td><td>99</td><td>99</td></tr><tr><td>24</td><td>26</td><td>56</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td></tr><tr><td>47</td><td>66</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td></tr><tr><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td></tr><tr><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td></tr><tr><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td></tr><tr><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td><td>99</td></tr></table></div></div>
+
+  <h3 id="jpeg-zigzag">Kolejność zig-zag</h3>
+  <figure>
+  <svg viewBox="0 0 960 400" role="img" aria-label="Kolejność zig-zag">
+    <rect class="bxo" x="20" y="20" width="44" height="44"/><text x="42.0" y="46.0" text-anchor="middle" class="sm mono">0</text><rect class="bx" x="64" y="20" width="44" height="44"/><text x="86.0" y="46.0" text-anchor="middle" class="sm mono">1</text><rect class="bxa" x="108" y="20" width="44" height="44"/><text x="130.0" y="46.0" text-anchor="middle" class="sm mono">5</text><rect class="bxa" x="152" y="20" width="44" height="44"/><text x="174.0" y="46.0" text-anchor="middle" class="sm mono">6</text><rect class="bxa" x="196" y="20" width="44" height="44"/><text x="218.0" y="46.0" text-anchor="middle" class="sm mono">14</text><rect class="bxa" x="240" y="20" width="44" height="44"/><text x="262.0" y="46.0" text-anchor="middle" class="sm mono">15</text><rect class="bxa" x="284" y="20" width="44" height="44"/><text x="306.0" y="46.0" text-anchor="middle" class="sm mono">27</text><rect class="bxa" x="328" y="20" width="44" height="44"/><text x="350.0" y="46.0" text-anchor="middle" class="sm mono">28</text><rect class="bx" x="20" y="64" width="44" height="44"/><text x="42.0" y="90.0" text-anchor="middle" class="sm mono">2</text><rect class="bx" x="64" y="64" width="44" height="44"/><text x="86.0" y="90.0" text-anchor="middle" class="sm mono">4</text><rect class="bxa" x="108" y="64" width="44" height="44"/><text x="130.0" y="90.0" text-anchor="middle" class="sm mono">7</text><rect class="bxa" x="152" y="64" width="44" height="44"/><text x="174.0" y="90.0" text-anchor="middle" class="sm mono">13</text><rect class="bxa" x="196" y="64" width="44" height="44"/><text x="218.0" y="90.0" text-anchor="middle" class="sm mono">16</text><rect class="bxa" x="240" y="64" width="44" height="44"/><text x="262.0" y="90.0" text-anchor="middle" class="sm mono">26</text><rect class="bxa" x="284" y="64" width="44" height="44"/><text x="306.0" y="90.0" text-anchor="middle" class="sm mono">29</text><rect class="bx" x="328" y="64" width="44" height="44"/><text x="350.0" y="90.0" text-anchor="middle" class="sm mono">42</text><rect class="bx" x="20" y="108" width="44" height="44"/><text x="42.0" y="134.0" text-anchor="middle" class="sm mono">3</text><rect class="bxa" x="64" y="108" width="44" height="44"/><text x="86.0" y="134.0" text-anchor="middle" class="sm mono">8</text><rect class="bxa" x="108" y="108" width="44" height="44"/><text x="130.0" y="134.0" text-anchor="middle" class="sm mono">12</text><rect class="bxa" x="152" y="108" width="44" height="44"/><text x="174.0" y="134.0" text-anchor="middle" class="sm mono">17</text><rect class="bxa" x="196" y="108" width="44" height="44"/><text x="218.0" y="134.0" text-anchor="middle" class="sm mono">25</text><rect class="bxa" x="240" y="108" width="44" height="44"/><text x="262.0" y="134.0" text-anchor="middle" class="sm mono">30</text><rect class="bx" x="284" y="108" width="44" height="44"/><text x="306.0" y="134.0" text-anchor="middle" class="sm mono">41</text><rect class="bx" x="328" y="108" width="44" height="44"/><text x="350.0" y="134.0" text-anchor="middle" class="sm mono">43</text><rect class="bxa" x="20" y="152" width="44" height="44"/><text x="42.0" y="178.0" text-anchor="middle" class="sm mono">9</text><rect class="bxa" x="64" y="152" width="44" height="44"/><text x="86.0" y="178.0" text-anchor="middle" class="sm mono">11</text><rect class="bxa" x="108" y="152" width="44" height="44"/><text x="130.0" y="178.0" text-anchor="middle" class="sm mono">18</text><rect class="bxa" x="152" y="152" width="44" height="44"/><text x="174.0" y="178.0" text-anchor="middle" class="sm mono">24</text><rect class="bxa" x="196" y="152" width="44" height="44"/><text x="218.0" y="178.0" text-anchor="middle" class="sm mono">31</text><rect class="bxa" x="240" y="152" width="44" height="44"/><text x="262.0" y="178.0" text-anchor="middle" class="sm mono">40</text><rect class="bx" x="284" y="152" width="44" height="44"/><text x="306.0" y="178.0" text-anchor="middle" class="sm mono">44</text><rect class="bx" x="328" y="152" width="44" height="44"/><text x="350.0" y="178.0" text-anchor="middle" class="sm mono">53</text><rect class="bxa" x="20" y="196" width="44" height="44"/><text x="42.0" y="222.0" text-anchor="middle" class="sm mono">10</text><rect class="bxa" x="64" y="196" width="44" height="44"/><text x="86.0" y="222.0" text-anchor="middle" class="sm mono">19</text><rect class="bxa" x="108" y="196" width="44" height="44"/><text x="130.0" y="222.0" text-anchor="middle" class="sm mono">23</text><rect class="bxa" x="152" y="196" width="44" height="44"/><text x="174.0" y="222.0" text-anchor="middle" class="sm mono">32</text><rect class="bxa" x="196" y="196" width="44" height="44"/><text x="218.0" y="222.0" text-anchor="middle" class="sm mono">39</text><rect class="bx" x="240" y="196" width="44" height="44"/><text x="262.0" y="222.0" text-anchor="middle" class="sm mono">45</text><rect class="bx" x="284" y="196" width="44" height="44"/><text x="306.0" y="222.0" text-anchor="middle" class="sm mono">52</text><rect class="bx" x="328" y="196" width="44" height="44"/><text x="350.0" y="222.0" text-anchor="middle" class="sm mono">54</text><rect class="bxa" x="20" y="240" width="44" height="44"/><text x="42.0" y="266.0" text-anchor="middle" class="sm mono">20</text><rect class="bxa" x="64" y="240" width="44" height="44"/><text x="86.0" y="266.0" text-anchor="middle" class="sm mono">22</text><rect class="bxa" x="108" y="240" width="44" height="44"/><text x="130.0" y="266.0" text-anchor="middle" class="sm mono">33</text><rect class="bxa" x="152" y="240" width="44" height="44"/><text x="174.0" y="266.0" text-anchor="middle" class="sm mono">38</text><rect class="bx" x="196" y="240" width="44" height="44"/><text x="218.0" y="266.0" text-anchor="middle" class="sm mono">46</text><rect class="bx" x="240" y="240" width="44" height="44"/><text x="262.0" y="266.0" text-anchor="middle" class="sm mono">51</text><rect class="bx" x="284" y="240" width="44" height="44"/><text x="306.0" y="266.0" text-anchor="middle" class="sm mono">55</text><rect class="bx" x="328" y="240" width="44" height="44"/><text x="350.0" y="266.0" text-anchor="middle" class="sm mono">60</text><rect class="bxa" x="20" y="284" width="44" height="44"/><text x="42.0" y="310.0" text-anchor="middle" class="sm mono">21</text><rect class="bxa" x="64" y="284" width="44" height="44"/><text x="86.0" y="310.0" text-anchor="middle" class="sm mono">34</text><rect class="bxa" x="108" y="284" width="44" height="44"/><text x="130.0" y="310.0" text-anchor="middle" class="sm mono">37</text><rect class="bx" x="152" y="284" width="44" height="44"/><text x="174.0" y="310.0" text-anchor="middle" class="sm mono">47</text><rect class="bx" x="196" y="284" width="44" height="44"/><text x="218.0" y="310.0" text-anchor="middle" class="sm mono">50</text><rect class="bx" x="240" y="284" width="44" height="44"/><text x="262.0" y="310.0" text-anchor="middle" class="sm mono">56</text><rect class="bx" x="284" y="284" width="44" height="44"/><text x="306.0" y="310.0" text-anchor="middle" class="sm mono">59</text><rect class="bx" x="328" y="284" width="44" height="44"/><text x="350.0" y="310.0" text-anchor="middle" class="sm mono">61</text><rect class="bxa" x="20" y="328" width="44" height="44"/><text x="42.0" y="354.0" text-anchor="middle" class="sm mono">35</text><rect class="bxa" x="64" y="328" width="44" height="44"/><text x="86.0" y="354.0" text-anchor="middle" class="sm mono">36</text><rect class="bx" x="108" y="328" width="44" height="44"/><text x="130.0" y="354.0" text-anchor="middle" class="sm mono">48</text><rect class="bx" x="152" y="328" width="44" height="44"/><text x="174.0" y="354.0" text-anchor="middle" class="sm mono">49</text><rect class="bx" x="196" y="328" width="44" height="44"/><text x="218.0" y="354.0" text-anchor="middle" class="sm mono">57</text><rect class="bx" x="240" y="328" width="44" height="44"/><text x="262.0" y="354.0" text-anchor="middle" class="sm mono">58</text><rect class="bx" x="284" y="328" width="44" height="44"/><text x="306.0" y="354.0" text-anchor="middle" class="sm mono">62</text><rect class="bx" x="328" y="328" width="44" height="44"/><text x="350.0" y="354.0" text-anchor="middle" class="sm mono">63</text><path d="M42 42 L86 42 L42 86 L42 130 L86 86 L130 42 L174 42 L130 86 L86 130 L42 174 L42 218 L86 174 L130 130 L174 86 L218 42 L262 42 L218 86 L174 130 L130 174 L86 218 L42 262 L42 306 L86 262 L130 218 L174 174 L218 130 L262 86 L306 42 L350 42 L306 86 L262 130 L218 174 L174 218 L130 262 L86 306 L42 350 L86 350 L130 306 L174 262 L218 218 L262 174 L306 130 L350 86 L350 130 L306 174 L262 218 L218 262 L174 306 L130 350 L174 350 L218 306 L262 262 L306 218 L350 174 L350 218 L306 262 L262 306 L218 350 L262 350 L306 306 L350 262 L350 306 L306 350 L350 350" class="lna" opacity="0.55"/>
+    <g transform="translate(400,30)">
+      <rect class="bxo" x="0" y="0" width="22" height="22"/><text x="32" y="16">pozycja 0 — DC (nigdy nie zmieniana)</text>
+      <rect class="bxa" x="0" y="34" width="22" height="22"/><text x="32" y="50">pozycje 5–40 — zakres JSteg-MF</text>
+      <rect class="bx" x="0" y="68" width="22" height="22"/><text x="32" y="84">pozostałe AC (1–4, 41–63)</text>
+      <text x="0" y="130" class="sm">Liczba w komórce = indeks w wektorze po zigzag_scan.</text>
+      <text x="0" y="150" class="sm">Niskie częstotliwości (lewy górny róg) mają duże wartości,</text>
+      <text x="0" y="168" class="sm">wysokie (prawy dolny) po kwantyzacji są zwykle zerami —</text>
+      <text x="0" y="186" class="sm">dlatego zig-zag grupuje zera na końcu i RLE działa wydajnie.</text>
+      <text x="0" y="220" class="sm mono">[0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, …, 62, 63]</text>
+      <text x="0" y="238" class="sm mut">(indeksy rastrowe bloku w kolejności odczytu)</text>
+    </g>
+  </svg>
+  <figcaption>Rys. 10. Ścieżka zig-zag w bloku 8×8 — wygenerowana bezpośrednio z <code>dct.zigzag_scan</code>.</figcaption>
+  </figure>
+
+  <h3 id="jpeg-entropia">Kodowanie entropijne (<code>_encode_block</code>)</h3>
+  <ol>
+    <li><b>DC — DPCM</b>: kodowana jest różnica względem DC poprzedniego bloku tej samej składowej. Różnica → <i>kategoria</i> (liczba bitów modułu) + <i>amplituda</i>; ujemne wartości zapisywane jako <code>(1 &lt;&lt; kat) − 1 + v</code> (dopełnienie jedynkowe).</li>
+    <li><b>AC — RLE</b>: dla każdej niezerowej wartości symbol <code>(liczba_zer_przed &lt;&lt; 4) | kategoria</code>, potem amplituda. Seria 16 zer → <code>ZRL</code> (0xF0); koniec bloku → <code>EOB</code> (0x00).</li>
+    <li><b>Huffman</b>: kody kanoniczne budowane z tablic BITS/HUFFVAL (<code>_huffman_codes</code>): w obrębie długości kody rosną o 1, przy przejściu do dłuższej długości przesunięcie w lewo.</li>
+    <li><b>Byte stuffing</b>: po każdym bajcie <code>0xFF</code> w strumieniu wstawiane jest <code>0x00</code>, żeby nie pomylić danych z markerem. Na końcu niepełny bajt dopełniany jedynkami.</li>
+  </ol>
+  <h4>Przykład policzony przez kod projektu</h4>
+  <p>Blok luminancji po zig-zag: <code>[12, 5, 0, −1, 0 × 60]</code>, poprzednie DC = 15.</p>
+  <table>
+    <tr><th>Element</th><th>Symbol</th><th>Kod Huffmana</th><th>Amplituda</th></tr>
+    <tr><td>DC: 12 − 15 = −3</td><td>kategoria 2</td><td><code>011</code></td><td><code>00</code></td></tr>
+    <tr><td>AC[1] = 5</td><td>0x03 (0 zer, kat. 3)</td><td><code>100</code></td><td><code>101</code></td></tr>
+    <tr><td>AC[3] = −1</td><td>0x11 (1 zero, kat. 1)</td><td><code>1100</code></td><td><code>0</code></td></tr>
+    <tr><td>60 zer</td><td>3 × ZRL + EOB</td><td><code>11111111001</code> ×3, <code>1010</code></td><td>—</td></tr>
+  </table>
+  <p>Wynik <code>_BitWriter</code>: <span class="hex">64 B8 FF 00 3F E7 FC D7</span> (z byte stuffingiem po <code>FF</code>).</p>
+  <div class="warnbox"><b>Obserwacja z przeglądu kodu:</b> enkoder emituje <code>ZRL</code> za każde 16 zer, także gdy do końca bloku są już same zera. Standardowo w takim przypadku wystarcza samo <code>EOB</code>. Plik jest poprawny (dekodery i Pillow go czytają), ale większy: dla <code>demo_sprint3/oryginal.png</code> 6 822 B zamiast 6 474 B (<b>+5,4%</b>, pomiar 26.11). To dobry kandydat na „jedną zmierzoną optymalizację” z karty S4-03 — zmiana nie dotyka współczynników, więc nie wpływa na ukrywanie.</div>
+
+  <h3 id="jpeg-plik">Struktura pliku i dekoder</h3>
+  <table>
+    <tr><th>Marker</th><th>Bajty</th><th>Zawartość w StegoLab</th></tr>
+    <tr><td>SOI</td><td><code>FF D8</code></td><td>początek obrazu</td></tr>
+    <tr><td>DQT</td><td><code>FF DB</code></td><td>2 tablice kwantyzacji (Y: id 0, C: id 1) w kolejności zig-zag</td></tr>
+    <tr><td>SOF0</td><td><code>FF C0</code></td><td>8 bit, wysokość, szerokość, 3 komponenty: Y <code>0x22</code> (2×2), Cb i Cr <code>0x11</code></td></tr>
+    <tr><td>DHT</td><td><code>FF C4</code></td><td>4 tablice Huffmana: DC/AC luminancji i chrominancji</td></tr>
+    <tr><td>SOS</td><td><code>FF DA</code></td><td>3 komponenty, Ss=0, Se=63, Ah/Al=0; dalej dane entropijne</td></tr>
+    <tr><td>EOI</td><td><code>FF D9</code></td><td>koniec obrazu</td></tr>
+  </table>
+  <p><b>Kolejność MCU (4:2:0)</b>: dla każdego makrobloku 16×16 zapisywane są 4 bloki Y (lewy górny, prawy górny, lewy dolny, prawy dolny), potem 1 Cb i 1 Cr. Bloki Y poza obrazem (gdy wymiar nie dzieli się przez 16) są powielane z krawędzi przy zapisie i <b>odcinane</b> przy odczycie, żeby indeksy bloków nadawcy i odbiorcy były identyczne.</p>
+  <p><b>Dekoder <code>read_jpeg</code></b> przechodzi po markerach, buduje słowniki <code>(długość, kod) → symbol</code>, usuwa byte stuffing do pierwszego markera po SOS i czyta bloki bit po bicie (<code>_BitReader</code>). Odrzuca: brak 3 komponentów, inne próbkowanie niż 4:2:0, 16-bitowe tablice DQT, niepoprawne kody i ucięty strumień.</p>
+</section>
+
+<section class="doc" id="jsteg">
+  <h2>JSteg i JSteg-MF</h2>
+  <p>Nośnikami są niezerowe współczynniki AC wszystkich bloków (najpierw wszystkie Y, potem Cb, potem Cr; w bloku pozycje zig-zag rosnąco). Bit = <code>|c| mod 2</code>. Jeśli parzystość się nie zgadza, moduł zmienia się o 1 <b>w górę</b> (<code>c + sign(c)</code>), a <code>±1</code> przechodzi na <code>±2</code> — dzięki temu żaden niezerowy współczynnik nie staje się zerem i odbiorca widzi dokładnie te same pozycje.</p>
+  <table>
+    <tr><th></th><th>JSteg</th><th>JSteg-MF</th></tr>
+    <tr><td>Pozycje zig-zag</td><td>1–63</td><td>5–40</td></tr>
+    <tr><td>Współczynniki ±1</td><td>używane</td><td>pomijane (tylko |c| ≥ 2)</td></tr>
+    <tr><td>Pojemność</td><td><code>liczba_nośników // 8</code></td><td>znacznie mniejsza</td></tr>
+    <tr><td>Kolejność</td><td colspan="2">deterministyczna, bez klucza</td></tr>
+    <tr><td>Ślad statystyczny</td><td colspan="2">wyrównanie par (2k, 2k+1) w histogramie — wykrywalne testem chi-kwadrat</td></tr>
+  </table>
+</section>
+
+<section class="doc" id="f5">
+  <h2>F5</h2>
+  <ol>
+    <li><b>Permutacja</b>: lista wszystkich pozycji AC (także zerowych) jest tasowana generatorem <code>random.Random(SHA-256(klucz))</code>; następnie zostają tylko niezerowe.</li>
+    <li><b>Bit współczynnika</b>: dla <code>c &gt; 0</code> to <code>c mod 2</code>, dla <code>c &lt; 0</code> odwrócona parzystość <code>1 − (|c| mod 2)</code>.</li>
+    <li><b>Kodowanie macierzowe (1, 3, 2)</b>: grupa 3 współczynników niesie 2 bity. Syndrom <code>s = XOR indeksów i ∈ {1,2,3}, których bit = 1</code>. Aby zapisać cel <code>t</code>, zmieniamy współczynnik nr <code>s ⊕ t</code> (0 = brak zmiany). Zmiana zawsze <b>zmniejsza moduł</b> o 1.</li>
+    <li><b>Shrinkage</b>: jeśli zmiana daje 0, odbiorca tej pozycji nie zobaczy — współczynnik jest usuwany z grupy, dobierany kolejny i te same 2 bity zapisywane od nowa.</li>
+  </ol>
+  <h4>Przykład</h4>
+  <table>
+    <tr><th></th><th>c₁</th><th>c₂</th><th>c₃</th><th>syndrom</th></tr>
+    <tr><td>przed</td><td>3 (bit 1)</td><td>−2 (bit 1)</td><td>5 (bit 1)</td><td>1⊕2⊕3 = <b>0</b> = 00</td></tr>
+    <tr><td>cel <code>t = 10₂ = 2</code></td><td colspan="3">zmień współczynnik nr 0 ⊕ 2 = <b>2</b>: −2 → −1 (bit 0)</td><td></td></tr>
+    <tr><td>po</td><td>3 (1)</td><td>−1 (0)</td><td>5 (1)</td><td>1⊕3 = <b>2</b> = 10 ✓</td></tr>
+  </table>
+  <p>Pojemność raportowana jako <code>(niezerowe // 3 · 2) // 8</code> bajtów; przy dużej liczbie ±1 shrinkage może ją zmniejszyć w trakcie — wtedy błąd „Pojemność F5 zmniejszyła się przez shrinkage”.</p>
+</section>
+
+<section class="doc" id="nsf5">
+  <h2>nsF5 (non-shrinkage F5, wet paper coding)</h2>
+  <figure>
+  <svg viewBox="0 0 960 200" role="img" aria-label="Układ nsF5">
+    <text x="20" y="24" class="bd">Wszystkie współczynniki AC (Y, Cb, Cr — także zera), potasowane kluczem: N pozycji</text>
+    <g>
+      <rect class="bxv" x="20" y="40" width="40" height="40"/><rect class="bxv" x="60" y="40" width="40" height="40"/><rect class="bxv" x="100" y="40" width="40" height="40"/><text x="160" y="65" class="sm">…</text><rect class="bxv" x="180" y="40" width="40" height="40"/>
+      <rect class="bxa" x="240" y="40" width="120" height="40"/><rect class="bxa" x="360" y="40" width="120" height="40"/><rect class="bxa" x="480" y="40" width="120" height="40"/><text x="625" y="65" class="sm">…</text><rect class="bxa" x="650" y="40" width="120" height="40"/>
+      <rect class="bx" x="770" y="40" width="170" height="40"/>
+    </g>
+    <text x="20" y="100" class="sm">13 bloków nagłówka po n = N // (13·16)</text><text x="20" y="116" class="sm mut">(stały podział, 1/16 pozycji)</text>
+    <text x="240" y="100" class="sm">L bloków payloadu po (N − 13n) // L, gdzie L = długość payloadu w bajtach</text><text x="240" y="116" class="sm mut">krótsza wiadomość → większe bloki → mniej zmian</text>
+    <text x="774" y="100" class="sm mut">reszta nieużywana</text>
+    <text x="20" y="150" class="sm"><tspan class="bd">Każdy blok niesie 1 bajt:</tspan> syndrom = XOR losowych 8-bitowych „kolumn” (z klucza) tych pozycji, gdzie |c| jest nieparzyste.</text>
+    <text x="20" y="170" class="sm"><tspan class="bd">Suche</tspan> pozycje (c ≠ 0) wolno zmieniać o −1 w stronę zera; <tspan class="bd">mokre</tspan> (c = 0) — nigdy. Odbiorca liczy syndrom ze wszystkich pozycji bloku,</text>
+    <text x="20" y="188" class="sm">więc nie musi wiedzieć, które były suche — a ±1 → 0 (shrinkage) jest zwykłą, poprawną zmianą bitu.</text>
+  </svg>
+  <figcaption>Rys. 11. Podział pozycji w nsF5 (<code>_Layout</code>). Permutacja i kolumny pochodzą z <code>numpy.random.default_rng(SHA-256(klucz))</code>.</figcaption>
+  </figure>
+  <p><b>Szukanie minimalnej zmiany</b> (<code>_min_changes</code>): brakująca różnica <code>required = syndrom ⊕ cel</code> to wektor w GF(2)⁸. Przeszukiwanie wszerz po 256 możliwych syndromach znajduje najmniejszy zbiór suchych pozycji, których kolumny XOR-ują się do <code>required</code> — zwykle 1–2 zmiany na bajt. <b>Pojemność</b>: nadawca sprawdza, czy suche kolumny każdego bloku nagłówka rozpinają całe GF(2)⁸ (<code>_rank = 8</code>), a dla payloadu przyjmuje średnio 48 suchych pozycji na bajt (prawdopodobieństwo braku rozwiązania ≈ 255·e⁻²⁴).</p>
+</section>
+
+<section class="doc" id="outguess">
+  <h2>OutGuess</h2>
+  <ol>
+    <li><b>Nośniki</b>: współczynniki AC z <code>|c| ≥ 2</code> (wartości 0 i ±1 są pomijane).</li>
+    <li><b>Wybór pozycji</b>: generator RC4 z kluczem <code>SHA-256("selection" ∥ 0 ∥ klucz)</code>; kolejna pozycja = poprzednia + 1 + (bajt RC4 mod 4) — średnio co 2,5 nośnika.</li>
+    <li><b>Maskowanie</b>: cała ramka jest XOR-owana strumieniem RC4 z kluczem <code>SHA-256("payload" ∥ 0 ∥ klucz)</code>, więc bity wyglądają losowo.</li>
+    <li><b>Zapis bitu</b>: gdy parzystość |c| się nie zgadza, wybierana jest wartość o module ±1 (nadal ≥ 2), a <b>nieużywany współczynnik z puli rezerwowej o tej docelowej wartości</b> dostaje starą wartość — zamiana par zachowuje histogram co do sztuki.</li>
+    <li><b>Kontrola</b>: po osadzeniu histogram wszystkich nośników jest porównywany z oryginałem; każda różnica kończy się błędem zamiast zapisu.</li>
+  </ol>
+  <div class="note"><b>RC4 to tutaj generator pseudolosowy, nie szyfr</b> — RC4 jest uznany za kryptograficznie słaby. Służy wyłącznie do rozproszenia i „wybielenia” bitów, zgodnie z ideą oryginalnego OutGuess.</div>
+</section>
+
+<section class="doc" id="stegfile">
+  <h2>Kontener plików STEGFILE</h2>
+  <p>API, gdy dostaje <code>payload_file</code>, opakowuje plik przed włożeniem do ramki STEG v1:</p>
+<pre><code>"STEGFILE" 01 │ długość_metadanych (4 B, big-endian) │ JSON {"filename":"umowa.pdf","content_type":"application/pdf"} │ bajty pliku</code></pre>
+  <p>Przy odczycie (<code>payload_type=file</code>) nazwa jest sanityzowana: <code>\</code> → <code>/</code>, zostaje tylko ostatni człon ścieżki, pusty → <code>payload.bin</code>. Plik wraca w polu <code>file_base64</code>; serwer niczego nie zapisuje na dysku pod nazwą z payloadu. CLI z <code>--payload-file</code> ukrywa „gołe” bajty (bez kontenera), a nazwę pliku wynikowego zawsze podaje użytkownik.</p>
+  <div class="warnbox"><b>Niespójność do rozważenia:</b> plik ukryty przez CLI nie ma metadanych STEGFILE, więc <code>payload_type=file</code> w API go nie odczyta (błąd „Payload nie zawiera osadzonego pliku”); odwrotnie, CLI <code>--output-file</code> zapisze cały kontener razem z nagłówkiem JSON.</div>
+</section>
+
+<section class="doc" id="steganaliza">
+  <h2>Steganaliza</h2>
+  <h3>Test chi-kwadrat par wartości (<code>chi_square_analysis</code>)</h3>
+  <p>Dla każdego kanału R, G, B liczone są liczebności <code>n₂ₖ</code> i <code>n₂ₖ₊₁</code> dla 128 par. Losowe LSB wyrównują je. Statystyka i stopnie swobody:</p>
+<pre><code>χ² = Σ (n₂ₖ − n₂ₖ₊₁)² / (n₂ₖ + n₂ₖ₊₁)     <span class="c"># tylko pary z (n₂ₖ+n₂ₖ₊₁)/2 ≥ min_expected_count (domyślnie 5)</span>
+df = liczba użytych par
+p  = Q(df/2, χ²/2)                        <span class="c"># górna niekompletna funkcja gamma, bez SciPy</span></code></pre>
+  <p>Duże <code>p</code> oznacza zgodność z wyrównaniem par (typowe po LSB), <b>nie prawdopodobieństwo ukrycia</b>. Opcja <code>window_size</code> liczy test w kolejnych oknach pikseli — przy sekwencyjnym LSB widać skok na granicy wiadomości.</p>
+  <h3>Histogramy DCT (<code>dct_histogram_report</code>)</h3>
+  <p>Dla Y, Cb, Cr: histogram DC, zbiorczy AC i AC dla każdej pozycji zig-zag 1–63; dla każdego — udział zer, liczby ±1, parzystych i nieparzystych niezerowych. JSteg zostawia charakterystyczne „schodki” par, F5 zwiększa liczbę zer (shrinkage), OutGuess zachowuje zbiorczy histogram.</p>
+  <h3>Detektor Hellingera</h3>
+<pre><code>H(h, b) = √( Σᵥ (√h(v) − √b(v))² / 2 )     <span class="c"># h, b — histogramy znormalizowane do udziałów; H ∈ [0, 1]</span></code></pre>
+  <p><code>calibrate_dct_histogram_detector(wzorcowe, kalibracyjne, quantile=0.95)</code> uśrednia histogramy czystych obrazów (każdy z wagą 1), liczy odległości obrazów kalibracyjnych i ustawia próg jako ich 95. percentyl (<code>numpy.quantile(…, method="higher")</code>). Alarm: <code>distance &gt; threshold</code>. Model jest zwykłym słownikiem JSON.</p>
+  <div class="danger"><b>RS (Fridrich–Goljan–Du)</b> jest opisany w README, ale nie został zaimplementowany — patrz BUG-01.</div>
+</section>
+
+<div class="part-title">Część IV · Projekt</div>
+
+<section class="doc" id="status">
+  <h2>Aktualny status (26.11.2026)</h2>
+  <p class="lead">Sprint 4 z 4 (tygodnie 8–9), przed tygodniem Review. Źródło: tablica Trello „StegoLab” i repozytorium.</p>
+  <div class="grid g4">
+    <div class="stat"><b>23</b><span>kart w „Gotowe” (z 40 zadaniowych)</span></div>
+    <div class="stat"><b>3</b><span>w trakcie (limit WIP 3)</span></div>
+    <div class="stat"><b>2</b><span>do sprawdzenia (limit 2)</span></div>
+    <div class="stat"><b>3</b><span>do zrobienia w Sprincie 4</span></div>
+  </div>
+  <h3>Postęp sprintów</h3>
+  <table>
+    <tr><th>Sprint</th><th>Cel</th><th>Wynik</th><th style="width:150px">Postęp</th></tr>
+    <tr><td>S0 · tydz. 1</td><td>organizacja, role, prezentacja koncepcji</td><td>8/8 kart, bez prototypu (zgodnie z planem)</td><td><div class="bar"><i style="width:100%"></i></div></td></tr>
+    <tr><td>S1 · tydz. 2–3</td><td>ramka, LSB, PNG, CLI, CI</td><td>4/4 kart; Review 22.10 z działającym CLI</td><td><div class="bar"><i style="width:100%"></i></div></td></tr>
+    <tr><td>S2 · tydz. 4–5</td><td>DCT, wspólne API, regresja</td><td>4/4; <b>zmiana zakresu</b>: DCT→PNG zastąpione natywnym JPEG</td><td><div class="bar"><i style="width:100%"></i></div></td></tr>
+    <tr><td>S3 · tydz. 6–7</td><td>GUI, wizualizacja, zakłócenia</td><td>6 kart gotowych (w tym 4 spoza planu: kodek JPEG, 5 metod, REST API, payload plikowy); metryki i symulator przeniesione do S4</td><td><div class="bar"><i style="width:75%"></i></div></td></tr>
+    <tr><td>S4 · tydz. 8–9</td><td>testy negatywne, pomiary, UX, dokumentacja</td><td>w toku: testy (S4-01), dokumentacja v1 (S4-09) w review</td><td><div class="bar"><i style="width:30%;background:var(--accent)"></i></div></td></tr>
+    <tr><td>Review · tydz. 10</td><td>demo, obrona, retrospektywa</td><td>zaplanowane (R-01…R-03)</td><td><div class="bar"><i style="width:0"></i></div></td></tr>
+  </table>
+
+  <h3>Tablica Kanban — migawka</h3>
+  <div class="kanban">
+    <div class="kcol"><h5>Do zrobienia <span>3</span></h5>
+      <div class="kcard todo"><i>BUG-01</i>rs_analysis eksportowany, ale nie istnieje</div>
+      <div class="kcard todo"><i>S4-02</i>Benchmark jakości, czasu i pamięci</div>
+      <div class="kcard todo"><i>S4-04</i>UX, README, wersja demo</div></div>
+    <div class="kcol"><h5>W trakcie <span>3</span></h5>
+      <div class="kcard wip"><i>S3-02</i>Metryki MSE/PSNR i wizualizacja (3/6)</div>
+      <div class="kcard wip"><i>S3-03</i>Symulator zakłóceń (2/6)</div>
+      <div class="kcard wip"><i>S4-01</i>Testy negatywne i luki pokrycia (3/4 kryteriów)</div></div>
+    <div class="kcol"><h5>Do sprawdzenia <span>2</span></h5>
+      <div class="kcard rev"><i>S3-09</i>Moduł steganalizy</div>
+      <div class="kcard rev"><i>S4-09</i>Dokumentacja HTML v1 (ten dokument)</div></div>
+    <div class="kcol"><h5>Zablokowane <span>1</span></h5>
+      <div class="kcard blk"><i>X-01</i>Szyfrowanie / korekcja — czeka na decyzję prowadzącego</div></div>
+    <div class="kcol"><h5>Gotowe <span>23</span></h5>
+      <div class="kcard done"><i>S0-01…S0-08</i>Sprint 0 — organizacja</div>
+      <div class="kcard done"><i>S1-01…S1-04</i>Ramka, LSB, PNG, CLI + CI</div>
+      <div class="kcard done"><i>S2-01…S2-04</i>DCT, JSteg, wspólne API, regresja</div>
+      <div class="kcard done"><i>S3-01, S3-04</i>Interfejs webowy, scenariusz integracyjny</div>
+      <div class="kcard done"><i>S3-05…S3-08</i>Kodek JPEG, 5 metod, REST API, pliki</div>
+      <div class="kcard done"><i>X-02</i>Natywny JPEG — zrealizowany</div></div>
+    <div class="kcol"><h5>Backlog <span>8</span></h5>
+      <div class="kcard back"><i>S5-01</i>Steganaliza w CLI/API/UI</div>
+      <div class="kcard back"><i>S5-02</i>Istniejący JPEG jako nośnik</div>
+      <div class="kcard back"><i>S5-03</i>Wydanie 0.2.0</div>
+      <div class="kcard back"><i>S4-03</i>Jedna zmierzona optymalizacja</div>
+      <div class="kcard back"><i>R-01…R-03</i>Demo, prezentacja, retrospektywa</div>
+      <div class="kcard back"><i>X-03</i>Parking pomysłów</div></div>
+  </div>
+
+  <h3>Zmiany zakresu względem planu startowego</h3>
+  <table>
+    <tr><th>Plan (Sprint 0)</th><th>Stan faktyczny</th><th>Uzasadnienie</th></tr>
+    <tr><td>DCT na blokach jednego kanału z wynikiem PNG</td><td>prawdziwy JPEG z własnego kodeka + 5 metod literaturowych</td><td>DCT→PNG nie ma praktycznego zastosowania; natywny JPEG daje realne porównanie i odpowiada literaturze</td></tr>
+    <tr><td>Streamlit</td><td>Flask + frontend HTML/JS</td><td>jedno źródło prawdy (OpenAPI), lepszy inspektor zmian, API do użycia poza GUI</td></tr>
+    <tr><td>SciPy do DCT</td><td>własna macierz bazowa w NumPy</td><td>mniej zależności, pełny autorski zakres</td></tr>
+    <tr><td>tylko tekst UTF-8</td><td>tekst i dowolne pliki</td><td>niski koszt dzięki ramce bajtowej</td></tr>
+    <tr><td>— (brak)</td><td>moduł steganalizy</td><td>uczciwe porównanie metod wymaga próby wykrycia</td></tr>
+  </table>
+</section>
+
+<section class="doc" id="problemy">
+  <h2>Znane problemy</h2>
+  <table>
+    <tr><th>ID</th><th>Problem</th><th>Wpływ</th><th>Karta</th></tr>
+    <tr><td><span class="pill bad">BUG-01</span></td><td><code>rs_analysis</code> w <code>__all__</code> i README, brak implementacji</td><td><code>ImportError</code>; <code>import *</code> nie działa</td><td>BUG-01</td></tr>
+    <tr><td><span class="pill warn">P-02</span></td><td><code>requires-python = "&gt;=3.9"</code>, a kod wymaga 3.10</td><td>instalacja na 3.9 przechodzi, import się wywraca</td><td>S4-04, S5-03</td></tr>
+    <tr><td><span class="pill warn">P-03</span></td><td>enkoder JPEG emituje ZRL przed EOB</td><td>pliki ok. 5% większe</td><td>S4-03</td></tr>
+    <tr><td><span class="pill warn">P-04</span></td><td>UI nie pokazuje pojemności, nie ukrywa plików, nie ma MSE/PSNR</td><td>użytkownik dowiaduje się o limicie dopiero z błędu</td><td>S3-02, S4-04</td></tr>
+    <tr><td><span class="pill warn">P-05</span></td><td>brak testów nsF5, OutGuess, payloadu plikowego, steganalizy</td><td>regresje mogą przejść niezauważone</td><td>S4-01</td></tr>
+    <tr><td><span class="pill">P-06</span></td><td>Swagger UI z CDN</td><td>bez internetu <code>/api/v1/swagger</code> jest pusty</td><td>S4-04</td></tr>
+    <tr><td><span class="pill">P-07</span></td><td>nieaktualne: README (46 testów), docs/api.md (metoda „DCT”, <code>image_shape</code>), static/README.txt, nieużywany app.js, dwa pliki sprint-1-review</td><td>myląca dokumentacja</td><td>S4-04</td></tr>
+    <tr><td><span class="pill">P-08</span></td><td>CLI <code>--payload-file</code> nie używa kontenera STEGFILE, API tak</td><td>pliki ukryte w CLI nie odczytają się przez API jako „file”</td><td>S5-01 / decyzja</td></tr>
+    <tr><td><span class="pill">P-09</span></td><td>UI po angielsku, CLI/API po polsku</td><td>niespójność dla użytkownika</td><td>S4-04</td></tr>
+  </table>
+</section>
+
+<section class="doc" id="roadmapa">
+  <h2>Plan rozwoju</h2>
+  <figure>
+  <svg viewBox="0 0 960 300" role="img" aria-label="Harmonogram">
+    <g class="sm mut"><text x="150" y="22">tydz. 1</text><text x="235" y="22">2–3</text><text x="355" y="22">4–5</text><text x="475" y="22">6–7</text><text x="600" y="22">8–9</text><text x="720" y="22">10</text><text x="820" y="22">po projekcie</text></g>
+    <path class="lnd" d="M650 30 V290"/><text x="656" y="290" class="xs bd" style="fill:var(--accent)">dziś 26.11</text>
+    <text x="10" y="54" class="sm bd">S0 Organizacja</text><rect class="bxo" x="140" y="40" width="70" height="20" rx="4"/>
+    <text x="10" y="84" class="sm bd">S1 LSB + CLI</text><rect class="bxo" x="210" y="70" width="110" height="20" rx="4"/>
+    <text x="10" y="114" class="sm bd">S2 DCT + API</text><rect class="bxo" x="320" y="100" width="120" height="20" rx="4"/>
+    <text x="10" y="144" class="sm bd">S3 JPEG + web</text><rect class="bxo" x="440" y="130" width="120" height="20" rx="4"/>
+    <text x="10" y="174" class="sm bd">S4 Jakość</text><rect class="bxo" x="560" y="160" width="90" height="20" rx="4"/><rect class="bxa" x="650" y="160" width="40" height="20" rx="4"/>
+    <text x="10" y="204" class="sm bd">Review</text><rect class="bxw" x="690" y="190" width="90" height="20" rx="4"/>
+    <text x="10" y="234" class="sm bd">S5 Rozwój</text><rect class="bx" x="780" y="220" width="170" height="20" rx="4"/>
+    <g class="xs"><text x="566" y="174">testy · docs</text><text x="694" y="204">demo · obrona</text><text x="786" y="234">steganaliza · JPEG-wejście</text></g>
+    <rect class="bxo" x="140" y="262" width="14" height="12"/><text x="160" y="272" class="xs">zrealizowane</text>
+    <rect class="bxa" x="250" y="262" width="14" height="12"/><text x="270" y="272" class="xs">w toku</text>
+    <rect class="bxw" x="330" y="262" width="14" height="12"/><text x="350" y="272" class="xs">zaplanowane</text>
+    <rect class="bx" x="440" y="262" width="14" height="12"/><text x="460" y="272" class="xs">opcjonalne</text>
+  </svg>
+  <figcaption>Rys. 12. Harmonogram względny (10 tygodni + rozwój po projekcie). Konkretne daty zajęć są na tablicy.</figcaption>
+  </figure>
+  <h3>Najlepsze następne kroki (w kolejności)</h3>
+  <ol class="steps">
+    <li><b>Naprawić BUG-01</b> (karta BUG-01, ~1 h): zaimplementować RS albo usunąć z eksportu; dodać test <code>from steganografia import *</code>. Odblokowuje S3-09.</li>
+    <li><b>Moduł metryk</b> (S3-02): <code>metrics.py</code> z <code>mse</code>/<code>psnr</code> (konwersja do <code>int32</code> przed odejmowaniem, PSNR = ∞ dla MSE = 0), pola <code>metrics</code> i <code>timing_ms</code> w odpowiedzi <code>/embed</code>, wyświetlenie w inspektorze.</li>
+    <li><b>Symulator zakłóceń</b> (S3-03): <code>disturb.py</code> — JPEG 90/70/50, szum Gaussa z seed, skalowanie 0,75 i powrót; klasyfikacja wyniku (OK / MAGIC / LENGTH / CRC); wiersz kontrolny bez zakłóceń.</li>
+    <li><b>Domknąć testy</b> (S4-01): nsF5, OutGuess, payload plikowy, steganaliza, prymitywy DCT, nie-baseline JPEG; rejestr znanych błędów.</li>
+    <li><b>Benchmark</b> (S4-02): 10 obrazów (zdjęcia, tekstury, gładkie), wspólny payload mieszczący się w najmniejszej pojemności, mediana z kilku powtórzeń, MSE/PSNR, BER, czas, RAM.</li>
+    <li><b>Jedna zmierzona optymalizacja</b> (S4-03): kandydat już zmierzony — EOB zamiast końcowych ZRL (−5,1% rozmiaru pliku); alternatywnie wektoryzacja <code>_BitWriter</code>.</li>
+    <li><b>Porządki przed demo</b> (S4-04): pojemność w UI, Swagger offline, README/pyproject, usunięcie <code>app.js</code>, tag <code>v0.2.0</code>.</li>
+    <li><b>Review</b> (R-01…R-03): scenariusz demo z polskim tekstem, świeżym odczytem, metrykami i uczciwie pokazanym nieudanym odczytem po zakłóceniu; plan awaryjny (nagranie oznaczone jako wcześniejsze).</li>
+  </ol>
+  <h3>Kierunki po projekcie (backlog)</h3>
+  <div class="grid g3">
+    <div class="card"><h4>S5-01 · Steganaliza dla użytkownika</h4><p><code>steganografia analyze</code>, <code>POST /api/v1/analyze</code>, zakładka „Analyze” z histogramem i zastrzeżeniem.</p></div>
+    <div class="card"><h4>S5-02 · Zdjęcie JPEG jako nośnik</h4><p>Osadzanie w istniejącym JPEG z jego tablicami kwantyzacji — bez podwójnej kompresji.</p></div>
+    <div class="card"><h4>S5-03 · Wydanie 0.2.0</h4><p>CHANGELOG, wheel w CI, macierz Python 3.10/3.12, opcjonalny Dockerfile.</p></div>
+    <div class="card"><h4>X-01 · Szyfrowanie (po decyzji)</h4><p>AES-GCM z biblioteki <code>cryptography</code> i ramka STEG v2 z polem flag — bez własnego szyfru.</p></div>
+    <div class="card"><h4>Korekcja błędów</h4><p>Kod Reeda-Solomona przed osadzeniem — kosztem pojemności — jako eksperyment z odpornością na lekkie zakłócenia.</p></div>
+    <div class="card"><h4>Adaptacyjne osadzanie</h4><p>Wybór pozycji według kosztu (tekstury zamiast gładkich obszarów), np. w duchu J-UNIWARD — jako badanie, nie zobowiązanie.</p></div>
+  </div>
+</section>
+
+<section class="doc" id="slownik">
+  <h2>Słownik pojęć</h2>
+  <table>
+    <tr><th>Pojęcie</th><th>Znaczenie</th></tr>
+    <tr><td>LSB</td><td>najmłodszy bit (Least Significant Bit) próbki; jego zmiana zmienia wartość o 1</td></tr>
+    <tr><td>DCT</td><td>dyskretna transformata kosinusowa; zamienia blok 8×8 pikseli na 64 współczynniki częstotliwości</td></tr>
+    <tr><td>DC / AC</td><td>współczynnik [0,0] (średnia bloku) / pozostałe 63 (zmiany jasności)</td></tr>
+    <tr><td>Kwantyzacja</td><td>dzielenie współczynników przez tablicę i zaokrąglenie — główne źródło strat JPEG</td></tr>
+    <tr><td>Zig-zag</td><td>kolejność odczytu bloku od niskich do wysokich częstotliwości</td></tr>
+    <tr><td>MCU</td><td>minimalna jednostka kodowania; przy 4:2:0 obszar 16×16 = 4 bloki Y + Cb + Cr</td></tr>
+    <tr><td>Kodowanie macierzowe</td><td>zapis k bitów w n nośnikach przy co najwyżej jednej zmianie (F5: 2 bity w 3 współczynnikach)</td></tr>
+    <tr><td>Shrinkage</td><td>zmiana ±1 → 0, przez którą odbiorca „gubi” nośnik (F5)</td></tr>
+    <tr><td>Wet paper coding</td><td>kodowanie, w którym część pozycji jest niezmienialna („mokra”), a odbiorca nie musi wiedzieć które (nsF5)</td></tr>
+    <tr><td>Syndrom</td><td>wartość liczona z bitów nośników, która ma być równa zapisywanej wiadomości</td></tr>
+    <tr><td>Steganaliza</td><td>wykrywanie obecności ukrytych danych metodami statystycznymi</td></tr>
+    <tr><td>PSNR / MSE</td><td>miary różnicy między obrazami (szczytowy stosunek sygnału do szumu / błąd średniokwadratowy)</td></tr>
+    <tr><td>BER</td><td>odsetek błędnych bitów po odczycie</td></tr>
+    <tr><td>WIP</td><td>praca w toku; limit WIP ogranicza liczbę kart „w trakcie”</td></tr>
+  </table>
+</section>
+
+<section class="doc" id="zrodla">
+  <h2>Źródła</h2>
+  <ul>
+    <li>ITU-T T.81 / ISO/IEC 10918-1 — <i>Digital compression and coding of continuous-tone still images</i> (JPEG), załącznik K: tablice kwantyzacji i Huffmana.</li>
+    <li>W3C — <a href="https://www.w3.org/TR/png-3/">Portable Network Graphics (PNG) Specification</a>.</li>
+    <li>A. Westfeld, A. Pfitzmann — <a href="https://users.ece.cmu.edu/~adrian/487-s06/westfeld-pfitzmann-ihw99.pdf"><i>Attacks on Steganographic Systems</i></a>, IHW 1999 (test chi-kwadrat).</li>
+    <li>A. Westfeld — <i>F5 — A Steganographic Algorithm: High Capacity Despite Better Steganalysis</i>, IHW 2001.</li>
+    <li>J. Fridrich, T. Pevný, J. Kodovský — <i>Statistically undetectable JPEG steganography: dead ends, challenges, and opportunities</i>, ACM MM&amp;Sec 2007 (nsF5).</li>
+    <li>J. Fridrich, M. Goljan, R. Du — <a href="https://dde.binghamton.edu/publications/acm_2001_03.pdf"><i>Detecting LSB Steganography in Color and Gray-Scale Images</i></a>, 2001 (metoda RS).</li>
+    <li>N. Provos — <i>Defending Against Statistical Steganalysis</i>, USENIX Security 2001 (OutGuess).</li>
+    <li><a href="https://reveng.sourceforge.io/crc-catalogue/17plus.htm#crc.cat.crc-32-iso-hdlc">CRC catalogue — CRC-32/ISO-HDLC</a>.</li>
+    <li>NIST — <a href="https://csrc.nist.gov/glossary/term/steganography">Glossary: steganography</a>.</li>
+    <li>Repozytorium projektu: <code>README.md</code>, <code>docs/frame-v1.md</code>, <code>docs/api.md</code>, <code>docs/rejestr-metod.md</code>, <code>docs/cli-demo.md</code>.</li>
+  </ul>
+</section>
+
+<footer>StegoLab · dokumentacja v1 · wygenerowano 26.11.2026 na podstawie kodu repozytorium (101 testów zielonych) · do przeglądu w karcie S4-09</footer>
+</main>
+</div>
+<button class="toTop" onclick="window.scrollTo({top:0})" aria-label="Do góry">↑</button>
+<script>
+(function(){
+  var root=document.documentElement;
+  try{var t=localStorage.getItem('stegolab-theme'); if(t) root.setAttribute('data-theme',t); else if(window.matchMedia('(prefers-color-scheme: dark)').matches) root.setAttribute('data-theme','dark');}catch(e){}
+  document.getElementById('themeBtn').addEventListener('click',function(){
+    var n=root.getAttribute('data-theme')==='dark'?'light':'dark'; root.setAttribute('data-theme',n);
+    try{localStorage.setItem('stegolab-theme',n);}catch(e){}
+  });
+  // active section highlighting
+  var links=[].slice.call(document.querySelectorAll('nav.side a[href^="#"]'));
+  var map={}; links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+  var targets=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));}).filter(Boolean);
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){ if(en.isIntersecting){ links.forEach(function(l){l.classList.remove('active');}); var a=map[en.target.id]; if(a){a.classList.add('active');} } });
+  },{rootMargin:'0px 0px -75% 0px'});
+  targets.forEach(function(t){obs.observe(t);});
+  links.forEach(function(a){a.addEventListener('click',function(){document.querySelector('nav.side').classList.remove('open');});});
+  // search: filter nav by section text, highlight first hit
+  var input=document.getElementById('navSearch');
+  var sections=[].slice.call(document.querySelectorAll('section.doc'));
+  input.addEventListener('input',function(){
+    var q=input.value.trim().toLowerCase();
+    links.forEach(function(a){
+      var id=a.getAttribute('href').slice(1); var el=document.getElementById(id);
+      var sec=el && (el.closest('section.doc')||el);
+      var hit=!q || (a.textContent.toLowerCase().indexOf(q)>=0) || (sec && sec.textContent.toLowerCase().indexOf(q)>=0);
+      a.parentElement.classList.toggle('hidden',!hit);
+    });
+  });
+  input.addEventListener('keydown',function(e){
+    if(e.key!=='Enter')return; var q=input.value.trim().toLowerCase(); if(!q)return;
+    for(var i=0;i<sections.length;i++){ if(sections[i].textContent.toLowerCase().indexOf(q)>=0){ sections[i].scrollIntoView(); break; } }
+  });
+})();
+</script>
+</body>
+</html>
